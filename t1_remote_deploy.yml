@@ -1,0 +1,46 @@
+#!/usr/bin/f5_ansible-playbook
+## Cisco IOS Tier 1 Remote Deployment 
+## Author: That Damn Contractor A. Pineda
+##=======================================
+## Please edit the variable file t1_remote_var.yml for remote site-specific
+## information. All the field must be populated. Take note of conditional variables
+## such as isr_type and fp_intf2. If you are using two connections going to Firepower,
+## replace none with the proper interface
+#
+## The ios_cred file contains the router login credentials
+## The hosts file contains the management IP of the remote site WAN router
+## Please run this code using this command: ansible-playbook -i hosts t1_remote_deploy.yml
+---
+- name: Deploy configuration to Tier-2 Remote Site
+  hosts: ios 
+  connection: local
+  gather_facts: no
+
+  tasks:   
+  - name: Obtain login credentials and variables
+    include_vars: 
+      dir: 'vars/t1'                 
+
+  - name: Define provider
+    set_fact:
+      provider:
+        host: "{{ inventory_hostname }}"
+        username: "{{ creds['username'] }}" 
+        password: "{{ creds['password'] }}"
+        auth_pass: "{{ creds['auth_pass'] }}"
+                                                                          
+  - name: Generate Tier-1 Configuration File
+    template: src=templates/t1_primary.j2 dest=cisco-conf/tier1-remote.cfg
+
+#  - name: Configure Tier-1 Remote Primary using template
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      src: "./cisco-conf/tier1-remote.cfg"
+
+  - name: Save configuration
+    ios_command:
+      provider: "{{ provider }}"
+      authorize: yes    
+      commands: 
+        - write memory  

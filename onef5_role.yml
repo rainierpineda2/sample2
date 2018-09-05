@@ -1,0 +1,17 @@
+#!/usr/bin/ansible-playbook
+# Author: apined12@its.jnj.com
+---
+- name: F5 Onboarding for Single LTM Devices
+  hosts: bigip
+  connection: local
+  gather_facts: no
+
+  vars_prompt:
+    - name: "setup_password"
+      prompt: "Enter admin password"
+      private: yes
+# To run, use this command: ansible-playbook -i roles/onef5onboard/inventory/hostfile onef5_role.yml      
+  roles:
+    - onef5onboard    
+    - onef5check
+    - savef5config

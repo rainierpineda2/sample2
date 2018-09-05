@@ -1,0 +1,72 @@
+#!/usr/bin/ansible-playbook
+## F5 Command Run Test
+## Author: That Damn Contractor A. Pineda
+- name: F5 Check VS for HTTP, upload iRule and apply to VS 
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  
+  vars:
+    v_server: "vs_test"
+    irule: "Redirect-vs_test_v1.0.1"
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter password"
+    private: yes
+# To run using the password file, run this--> ansible-playbook bigip_cmd.yml -e@sekreto.yml -vv
+  tasks:
+  - name: Get LTM facts
+    bigip_facts:
+      server: "192.168.203.131"
+      user: "admin"
+      password: "{{ setup_password }}"
+      include: "virtual_server"
+      filter: "/Common/{{ v_server }}"
+      validate_certs: false 
+    register: bigip_facts
+    delegate_to: localhost  
+
+#  - name: debug
+#    debug: msg="{{ bigip_facts }}"
+
+  - name: Assert that HTTP profile is set on "{{ v_server }}" 
+    assert:
+      that:
+        "'PROFILE_TYPE_HTTP' in bigip_facts['ansible_facts']['virtual_server']['/Common/{{ v_server }}']['profile']|string"
+      msg: "HTTP Profile is not set on {{ v_server }}"
+      
+  - name: Upload iRule to F5 
+    bigip_irule:
+      module: "ltm"
+      name: "{{ irule }}"
+      user: "admin"
+      password: "{{ setup_password }}"
+      server: "192.168.203.131"
+      #src: "./files/{{ irule }}.tcl"
+      content: "{{ lookup('file', 'files/{{ irule }}.tcl') }}"
+      state: "present"
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Add iRule to "{{ v_server }}"
+    bigip_virtual_server:
+      server: "192.168.203.131"
+      user: "admin"
+      password: "{{ setup_password }}"
+      partition: "Common"
+      name: "{{ v_server }}"
+      irules: 
+        - "{{ irule }}"
+      validate_certs: false    
+    delegate_to: localhost    
+
+#  - name: Delete iRule from {{ v_server }}
+#    icontrol_install_config:
+#      uri: "/mgmt/tm/ltm/virtual/{{ v_server }}"
+#      body: '{"rules": [""]}'
+#      method: PATCH
+#      host: "10.0.209.86"
+#      username: admin
+#      password: "{{ setup_password }}"    
+#    delegate_to: localhost

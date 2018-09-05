@@ -1,0 +1,11 @@
+---
+# Variable file for deploying iRules to F5 VIPs
+vips:
+  - vs_name: vs_test
+    cur_rule: country_block_v1
+    new_rule: country_block_v2    
+uris:
+  - old: old1.jnjlab.com
+    new: new1.jnjlab.com
+  - old: old2.jnjlab.com
+    new: new2.jnjlab.com

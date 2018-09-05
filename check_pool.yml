@@ -1,0 +1,38 @@
+#!/usr/bin/ansible-playbook
+## F5 Fact Check Test
+## Author: That Damn Contractor A. Pineda
+- name: F5 Setup Using F5-Ansible modules
+  hosts: localhost
+  connection: local
+  gather_facts: no
+   
+  vars:
+    pool_name: "sddc-vcac-pool"
+
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter password"
+    private: yes
+# To run using the password file, run this--> ansible-playbook check_pool.yml -e@sekreto.yml -vv
+# To run supplying the var--> ansible-playbook check_pool.yml --extra-vars "pool_name=<pool_name>" 
+  tasks:
+  - name: Get LTM facts  
+    bigip_facts:
+      server: "10.0.160.134"
+      user: "admin"
+      password: "{{ setup_password }}"
+      include: "pool"
+      filter: "{{ pool_name }}"
+      validate_certs: no
+    register: bigip_facts  
+    delegate_to: localhost  
+
+  - name: debug
+    debug: msg="{{ bigip_facts }}" 
+
+  - name: Assert that Pool - "{{pool_name}}" is available
+    assert:
+      that:
+        "'AVAILABILITY_STATUS_GREEN' in bigip_facts['ansible_facts']['pool']['/Common/{{pool_name}}']['object_status']['availability_status']|string"
+      msg: "Pool is NOT available."  

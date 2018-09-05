@@ -1,0 +1,53 @@
+#!/usr/bin/ansible-playbook
+## F5 Managing the data group blacklist
+## Author: apined12@its.jnj.com
+# To run using the password file, run this--> ansible-playbook -i hosts f5modblacklist.yml --ask-vault-pass
+---
+- name: Managing F5 Internal Data-Group blacklist
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars/cctldlist.yml
+#  To run and be prompted for password, uncomment next four lines below
+#  vars_prompt:
+#  - name: "setup_password"
+#  prompt: "Enter password"
+#  private: yes
+
+  tasks:
+  - name: Create country code list
+    set_fact:
+      forbid: "{{ forbid|default([]) + [ lookup('csvfile', '{} file=files/reversecc.csv delimiter=,'.format(item|upper)) ] }}"
+    with_items: "{{ ccTLD }}"  
+    when: item != "xx"
+
+  - name: Display values
+    debug:
+      msg: "{{ forbid|lower }}"
+
+  - name: Add entries to internal data group
+    bigip_data_group:
+      name: blacklist  
+      server: "{{ mgmt_ip }}"
+      password: "{{ setup_password }}"
+      user: "{{ setup_user }}"
+      type: address
+      records: 
+        - key: "{{ item }}"
+      validate_certs: false
+    delegate_to: localhost
+    with_items: "{{ forbid|lower }}"
+    when: mode == "ADD"
+
+  - name: Deleting entries from internal data group blacklist
+    bigip_command:
+      commands: modify ltm data-group internal blacklist records delete { {{ item }} { } }
+      server: "{{ mgmt_ip }}"
+      password: "{{ setup_password }}"
+      user: "{{ setup_user }}"
+      validate_certs: "false"
+    delegate_to: localhost
+    with_items: "{{ forbid|lower }}"
+    when: mode == "DELETE"  

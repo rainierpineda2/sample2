@@ -1,0 +1,17 @@
+---
+- name: Generate JSON payload for iApp
+  template: src={{ directory_path }}/{{ item.key }}.j2 dest=roles/deploy_iapp/files/{{ item.key }}.json
+  with_dict: "{{ f5_iapp_dict }}"
+
+- name: Deploy F5 http iApp
+  bigip_iapp_service:
+    name: "{{ item.value.vip_name }}"
+    template: "f5.http"
+    parameters: "{{ lookup('file', item.key + '.json') }}"
+    server: "{{ mgmt_ip }}"
+    password: "{{ setup_password }}"
+    user: "{{ setup_user }}"
+    validate_certs: "no"
+    state: "{{ item.value.state }}"
+  delegate_to: localhost
+  with_dict: "{{ f5_iapp_dict }}"

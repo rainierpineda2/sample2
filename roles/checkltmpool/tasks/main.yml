@@ -1,0 +1,17 @@
+---
+- block:
+    - name: Gather pool information from LTM
+      bigip_facts:
+        include: "pool"
+        filter: "{{ item.pool_name }}"
+      register: checkpool
+      delegate_to: localhost
+      with_items: "{{ vips }}"
+    - set_fact: pool_item="{{ item.ansible_facts }}"  
+      register: lspool
+      no_log: True
+      with_items: "{{ checkpool.results }}"
+    - name: Create list of pools
+      set_fact:
+        pool_stat: "{{ lspool.results | map(attribute='ansible_facts.pool_item') | list }}"  
+    - debug: msg="{{ pool_stat }}"

@@ -1,0 +1,100 @@
+#!/usr/bin/ansible-playbook
+---
+## Ansible Script to create new F5 GTM wideips and pools
+## NOTE: Includes checking of virtual server discovery on GTM virtual server via bigip_gtm_facts 
+##        The LTM virtual server must exist before running this on GTM.
+## Author: apined12@its.jnj.com
+- name: F5 Add GTM wideips and pools
+  hosts: tmsh 
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars/newwipvars.yml
+
+#  To run using the password file, run this--> ansible-playbook -i hosts addgtmvs.yml --ask-vault-pass --limit labusra5474lb005
+  tasks:
+  - name: Check if virtual server discovery is enabled
+    bigip_gtm_facts:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      include: "virtual_server"
+      filter: "{{ item.1.name }}"
+    register: gtmfacts
+    delegate_to: localhost
+    with_subelements: 
+      - "{{ pool_gtm }}"
+      - v_server
+      - skip_missing: yes
+  - set_fact: vs_discovery={{ gtmfacts.results.0.virtual_server.0.virtual_server_discovery }}
+  - debug: var=vs_discovery
+
+  - name: Create GTM Virtual Server
+    bigip_gtm_virtual_server:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      virtual_server_server: "{{ item.1.name }}"
+      virtual_server_name: "{{ item.1.vs_ltm }}" 
+      host: "{{ item.1.address }}"
+      port: "{{ item.1.port }}"
+      state: present
+    delegate_to: localhost
+    with_subelements: 
+      - "{{ pool_gtm }}"
+      - v_server
+      - skip_missing: yes
+    when: vs_discovery == "disabled"
+
+  - name: Create GTM Pool  
+    bigip_gtm_pool:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      state: present
+      name: "{{ item.name }}"
+      type: a
+      preferred_lb_method: "{{ item.pref_lb }}"
+      alternate_lb_method: "{{ item.alt_lb|default(omit) }}" 
+      fallback_lb_method: "{{ item.fall_lb|default(omit) }}"
+    delegate_to: localhost  
+    with_items: "{{ pool_gtm }}" 
+
+  - name: Add member VS to GTM Pool (because bigip_gtm_pool cannot add members yet) 
+    bigip_command:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      commands:
+        - "modify gtm pool {{ item.0.name }} members add { {{ item.1.name }}:{{ item.1.vs_ltm }} }"
+      validate_certs: "no"
+    delegate_to: localhost
+    with_subelements:
+      - "{{ pool_gtm }}"
+      - v_server
+
+  - name: Create WideIP   
+    bigip_gtm_wide_ip:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      lb_method: "{{ item.wip_lb }}"
+      wide_ip: "{{ item.wideip }}"
+      pool: "{{ item.wip_pool }}"
+      type: a
+      state: present
+    delegate_to: localhost
+    with_items: "{{ wip }}"
+
+#  - name: Add pool to WideIP (because bigip_gtm_wide_ip cannot add pools yet)     
+#    bigip_command:
+#      server: "{{ mgmt_ip }}"
+#      user: "{{ setup_user }}"
+#      password: "{{ setup_password }}"
+#      commands:
+#        - modify gtm wideip {{ item.wideip }} pools add { {{ item.wip_pool }} }
+#        - save sys config
+#      validate_certs: "no"
+#    delegate_to: localhost
+#    with_items: "{{ wip }}"

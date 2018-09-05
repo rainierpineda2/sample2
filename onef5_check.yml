@@ -1,0 +1,69 @@
+#!/usr/bin/ansible-playbook
+## F5 Fact Check Test
+## Author: That Damn Contractor A. Pineda
+- name: F5 Pre- and Post-Configuration Check
+  hosts: bigip
+  connection: local
+  gather_facts: no
+   
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter password"
+    private: yes
+
+  tasks:
+  - name: Get LTM System Information  
+    bigip_facts:
+      server: "{{ inventory_hostname }}"
+      user: "admin"
+      password: "{{ setup_password }}"
+      include: "system_info,self_ip,vlan"
+      validate_certs: no
+      #    register: device_facts  
+    delegate_to: localhost  
+    
+  - name: Display F5 system information 
+    debug: msg="Hostname is {{ system_info.system_information.host_name }}"
+
+  - name: Display Self-IP information  
+    debug: msg="The self-ip for {{ item }} is {{ self_ip[item]['address'] }}"
+    with_items: "{{ self_ip.keys() }}"
+
+  - set_fact: 
+      vlanname: "{{ item }}"
+      vlanid: "{{ vlan[item]['vlan_id'] }}"
+      miembro: "{{ vlan[item]['member'] }}"
+    with_items: "{{ vlan.keys() }}"
+    register: mlist
+
+  - debug: msg="{{ mlist }}"  
+
+  - name: Gather NTP, DNS and Syslog servers
+    bigip_command:
+      commands:
+        - list sys ntp
+        - list sys dns
+        - list sys syslog
+      server: "{{ inventory_hostname }}"
+      user: admin
+      password: "{{ setup_password }}"
+      validate_certs: no
+    register: syslist 
+    delegate_to: localhost
+
+  - set_fact: 
+      ntpsrv: "{{ syslist.stdout[0]|regex_findall('((?:[0-9]{1,3}\\.){3}[0-9]{1,3})') }}"   
+      dnssrv: "{{ syslist.stdout[2]|regex_findall('((?:[0-9]{1,3}\\.){3}[0-9]{1,3})') }}"
+      logsrv: "{{ syslist.stdout[1]|regex_findall('((?:[0-9]{1,3}\\.){3}[0-9]{1,3})') }}"
+
+  - debug: msg="NTP server {{ item }} is configured"
+    with_items: "{{ ntpsrv }}"
+  - debug: msg="DNS server {{ item }} is configured"
+    with_items: "{{ dnssrv }}"
+  - debug: msg="Syslog server {{ item }} is configured"
+    with_items: "{{ logsrv }}"  
+
+#  - name: Display VLAN information  
+#    debug: msg="The vlan ID for {{ item['ansible_facts']['vlanname'] }} is {{ item['ansible_facts']['vlanid'] }} on {{ item['ansible_facts']['miembro']|map('extract', {'member_name'})|list }}"
+#    with_items: "{{ mlist.results }}"

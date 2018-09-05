@@ -1,0 +1,96 @@
+#!/usr/bin/ansible-playbook
+## F5 Client SSL Profile Configuration
+## Notes: Run this only after the SSL files have been uploaded using xfiles.yml
+## Author: That Damn Contractor A. Pineda
+---
+- name: Import SSL cert & key to F5 
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    cert_name: "domain.jnjlab.com"
+    chain_name: ""
+    mgmt_ip: "10.0.209.86"
+    setup_user: "admin"
+    v_server: "vs_test"
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter password"
+    private: yes
+# To run using the password file, run this--> ansible-playbook ssl_upload.yml -e@sekreto.yml -vv
+  tasks:
+  - name: Upload chain certificate
+    icontrol_install_config:
+      uri: "/mgmt/tm/sys/crypto/cert"
+      body: '{"command":"install","name":"{{ chain_name }}",
+              "from-local-file":"/var/config/rest/downloads/{{ chain_name }}.crt"}'
+      method: "POST"        
+      host: "{{ mgmt_ip }}"
+      username: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+    when: not((chain_name is undefined) or (chain_name is none) or (chain_name|trim == ''))
+
+  - name: Upload SSL key
+    icontrol_install_config:
+      uri: "/mgmt/tm/sys/crypto/key"
+      body: '{"command":"install","name":"{{ cert_name }}",
+              "from-local-file":"/var/config/rest/downloads/{{ cert_name }}.key"}'
+      method: "POST"
+      host: "{{ mgmt_ip }}"
+      username: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+
+  - name: Upload SSL certificate
+    icontrol_install_config:
+      uri: "/mgmt/tm/sys/crypto/cert"
+      body: '{"command":"install","name":"{{ cert_name }}",
+              "from-local-file":"/var/config/rest/downloads/{{ cert_name }}.crt"}'
+      method: "POST"        
+      host: "{{ mgmt_ip }}"
+      username: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+
+  - name: Wait for certificates to become available
+    wait_for:
+      timeout: 10
+
+  - name: Create Client SSL profile
+    icontrol_install_config:
+      uri: "/mgmt/tm/ltm/profile/client-ssl"
+      body: '{"name":"{{ cert_name }}-clientssl",
+              "cert":"{{ cert_name }}.crt",
+              "key":"{{ cert_name }}.key"
+              "chain":"{{ chain_name }}.crt"}'
+      method: "POST"
+      host: "{{ mgmt_ip }}"
+      username: "{{ setup_user }}"
+      password: "{{ setup_password }}"    
+    when: not((chain_name is undefined) or (chain_name is none) or (chain_name|trim == ''))
+
+  - name: Create Client SSL profile (no chain cert)
+    icontrol_install_config:
+      uri: "/mgmt/tm/ltm/profile/client-ssl"
+      body: '{"name":"{{ cert_name }}-clientssl",
+              "cert":"{{ cert_name }}.crt",
+              "key":"{{ cert_name }}.key"}'
+      method: "POST"
+      host: "{{ mgmt_ip }}"
+      username: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+    when: (chain_name is undefined) or (chain_name is none) or (chain_name|trim == '')
+
+  - name: Add SSL profile to "{{ v_server }}"  
+    bigip_virtual_server:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"  
+      password: "{{ setup_password }}"
+      partition: "Common"
+      name: "{{ v_server }}"
+      all_profiles:
+        - tcp
+        - http
+        - "{{ cert_name }}-clientssl"
+      validate_certs: "no"
+    delegate_to: localhost   

@@ -1,0 +1,27 @@
+#!/usr/bin/ansible-playbook
+## F5 Command Run Test
+## Author: The Ansible Scipter formerly known as The Network Engineer
+- name: F5 Setup Using F5-Ansible modules
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter password"
+    private: yes
+# To run using the password file, run this--> ansible-playbook viptest03.yml -e@sekreto.yml -vv
+  tasks:
+    - name: Get GTM facts
+      bigip_gtm_facts:
+        server: "10.0.209.86"
+        user: "admin"
+        password: "{{ setup_password }}"
+        include: "pool"
+        filter: "NA-Test22"
+        validate_certs: false
+      register: bigip_gtm_facts
+      delegate_to: localhost
+    - name: Display GTM facts 
+      debug: msg="{{ bigip_gtm_facts }}"

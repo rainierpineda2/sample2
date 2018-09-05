@@ -1,0 +1,34 @@
+#!/usr/bin/ansible-playbook
+## F5 Gather Facts
+## Author: That Damn Contractor A. Pineda
+---
+- name: F5 Ansible modules
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+   
+# Fill in the name of a pool or virtual server below depending on the include property
+# for bigip_facts  
+  vars:
+    fil_name: "vs_test"
+    xrules:
+# To run using the password file, run this--> ansible-playbook setvar.yml --ask-vault-pass
+  tasks:
+  - name: Get LTM specific facts  
+    bigip_facts:
+      server: "{{ ansible_host }}"
+      user: "admin"
+      password: "{{ setup_password }}"
+      include: "virtual_server"
+      filter: "{{ fil_name }}"
+      validate_certs: no
+    register: bigip_facts  
+    delegate_to: localhost  
+
+  - name: Set target variables 
+    set_fact: vs_target=/Common/{{ fil_name }}
+  - set_fact: rules={{bigip_facts['ansible_facts']['virtual_server'][vs_target]['rule']}}
+
+  - name: Gather rule names 
+    set_fact: xrules={{ rules|map(attribute='rule_name')|list }}
+  - debug: msg={{ xrules }} 

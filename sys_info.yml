@@ -1,0 +1,35 @@
+#!/usr/bin/ansible-playbook
+## F5 Fact Check Test
+## Author: That Damn Contractor A. Pineda
+- name: F5 Setup Using F5-Ansible modules
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+   
+#  To run and be prompted for password, uncomment next four lines below
+#  vars_prompt:
+#  - name: "setup_password"
+#    prompt: "Enter password"
+#    private: yes
+# To run using the password file, run this--> ansible-playbook -i hosts sys_info.yml --ask-vault-pass
+  tasks:
+  - name: Get LTM System Information  
+    bigip_facts:
+      server: "{{ ansible_host }}"
+      user: "admin"
+      password: "{{ setup_password }}"
+      include: "system_info"
+      #filter: "*10.129.44.189*"
+      validate_certs: no
+    #register: device_facts  
+    delegate_to: localhost  
+#  - debug: msg="The failover state is {{ device[item]['failover_state'] }}"
+#    with_items: "{{ device.keys() }}"
+#  - fail: msg="Device {{ system_info.system_information.host_name }} is not running version 12.x software...aborting auto-config"
+#    when: system_info.product_information.product_version != "12.1.2"
+    
+  - name: Display F5 system information 
+    debug: msg="{{ system_info }}" 
+    #when: device_group[item]['type'] == 'DGT_FAILOVER'
+    #with_items: "{{ device_group.keys() }}"
+    #debug: msg="Hostname is {{ system_info.system_information.host_name }}" 

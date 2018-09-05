@@ -1,0 +1,47 @@
+---
+- name: Get LTM System Information
+  bigip_facts:
+    include: "system_info"
+    validate_certs: no
+  register: bigip_facts
+  delegate_to: localhost
+
+- set_fact:
+    f5_name: "{{ system_info.system_information.host_name }}"
+    now: "{{ lookup('pipe','date +%Y%m%d')}}"
+
+- name: Save system stats
+  bigip_command:
+    commands:
+      - show sys clock
+      - show sys version | grep Version
+      - show sys performance system
+      - show net interface
+      - show cm failover-status
+      - show cm device-group
+      - show cm sync-status
+    validate_certs: no  
+  register: bigip_stat    
+  delegate_to: localhost  
+
+- lineinfile: 
+    create: yes
+    state: present
+    path: files/{{ f5_name }}-{{ now }}-postchg.txt
+    line: "{{ item }}"
+  with_items: "{{ bigip_stat.stdout_lines }}"
+
+- name: Compare prechange & postchange stats
+  command: diff {{ f5_name }}-{{ now }}-prechg.txt {{ f5_name }}-{{ now }}-postchg.txt
+  args:
+    chdir: "./files/"
+  failed_when: "diff.rc > 1"
+  register: diff
+
+- name: Save file discrepancies
+  lineinfile:
+    create: yes
+    state: present
+    path: files/{{ f5_name }}-{{ now }}-chgdiff.txt
+    line: "{{ item }}"
+  with_items: "{{ diff.stdout_lines }}" 

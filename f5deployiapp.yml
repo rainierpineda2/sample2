@@ -1,0 +1,11 @@
+#!/usr/bin/ansible-playbook
+# Author: apined12@its.jnj.com
+---
+- name: F5 Deploy iApp
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+
+  # To run, use this command: ansible-playbook -i hosts f5deployiapp.yml --ask-vault-pass     
+  roles:
+    - deploy_iapp

@@ -1,0 +1,48 @@
+#!/usr/bin/ansible-playbook
+## F5 Fact Check Test
+## Author: That Damn Contractor A. Pineda
+- name: F5 Setup Using F5-Ansible modules
+  hosts: prod
+  connection: local
+  gather_facts: no
+   
+  vars_prompt:
+  - name: "searchee"
+    prompt: "Enter VS search string"
+    private: no
+
+  environment:
+    F5_SERVER: "{{ ansible_host }}"
+    F5_USER: "sa-its-networkinfo"
+    F5_PASSWORD: "{{ setup_password }}"
+    F5_VALIDATE_CERTS: "false"  
+# To run using the password file, run this--> ansible-playbook -i hosts sys_info.yml --ask-vault-pass
+  tasks:
+  - name: Get LTM VS Information
+    bigip_facts:
+      include: "virtual_server"
+      filter: "{{ searchee }}"
+    delegate_to: localhost  
+    
+  - name: Display VS information 
+    debug: msg="{{ virtual_server }}" 
+
+  - name: Get LTM Pool Information
+    bigip_facts:
+      include: "pool"
+      filter: "{{ virtual_server[item]['default_pool_name'] }}"
+    register: checkpool  
+    delegate_to: localhost
+    with_items: "{{ virtual_server.keys() }}"
+
+  - set_fact: pool_item="{{ item.ansible_facts }}"
+    register: lspool
+    no_log: True
+    with_items: "{{ checkpool.results }}"
+
+  - name: Create list of pools
+    set_fact:
+      pool_stat: "{{ lspool.results | map(attribute='ansible_facts.pool_item.pool') | list }}"
+  - copy:
+      content: "{{ pool_stat | to_nice_json }}"
+      dest: files/test123.json

@@ -1,0 +1,6 @@
+{% for ip in ipblock %}
+create host_plain {{ batch }}-{{ ip }}
+modify network_objects {{ batch }}-{{ ip }} ipaddr {{ ip }}
+modify network_objects {{ batch }}-{{ ip }} comments "Blocked IP for {{ batch }}-{{ ip }}"
+{% endfor %}
+update_all

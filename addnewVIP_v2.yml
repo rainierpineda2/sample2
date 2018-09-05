@@ -1,0 +1,131 @@
+#!/usr/bin/ansible-playbook
+# New VIP F5 Ansible modules
+# Author: apined12@its.jnj.com
+---
+- name: F5 New VIP using Ansible modules
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+ 
+  vars_files:
+    - vars/newvipvars.yml
+
+#  To run and be prompted for password, uncomment next four lines below
+#  vars_prompt:
+#  - name: "setup_password"
+#    prompt: "Enter password"
+#    private: yes
+
+  environment:
+    F5_SERVER: "{{ ansible_host }}"
+    F5_USER: "admin"
+    F5_PASSWORD: "{{ setup_password }}"
+    F5_VALIDATE_CERTS: "false"
+
+# To run using the password file, run this--> ansible-playbook  -i hosts --ask-vault-pass addnewVIP_v2.yml
+  tasks:
+# The modules below have been tested to work only on BIGIP appliances version 11.6 and above
+  - name: Gather pool information from LTM
+    bigip_facts:
+      include: "pool"
+      filter: "{{ item.pool_name }}"
+    register: checkpool  
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+  - name: Check if pool exist 
+    set_fact: 
+      pool_stat: "{{ checkpool.results.0.ansible_facts.pool }}"
+
+  - name: Create pool if it does not exist else skip
+    bigip_pool:
+      state: "present"
+      monitor_type: "and_list"
+      monitors: "{{ item.1 }}"
+      name: "{{ item.0.pool_name }}"
+      partition: "{{ item.0.partition | default('Common') }}"
+      lb_method: "{{ item.0.lb_method }}"
+    delegate_to: localhost
+    with_subelements: 
+      - "{{ vips }}"
+      - monitors
+    when: not(pool_stat)
+
+  - name: Add pool members 
+    bigip_pool_member:
+      state: "present"
+      pool: "{{ item.0.pool_name }}"
+      partition: "{{ item.0.partition | default('Common') }}"
+      host: "{{ item.1.address }}"
+      port: "{{ item.1.port }}"
+    delegate_to: localhost
+    with_subelements:
+      - "{{ vips }}"
+      - members 
+
+  - name: Create virtual server (using midstream fix due for Ansible 2.5 release)
+    bigip_virtual_server:
+      state: present
+      partition: "{{ item.partition | default('Common') }}"
+      name: "{{ item.vs_name }}"
+      destination: "{{ item.vs_address }}"
+      port: "{{ item.vs_port }}"
+      pool: "{{ item.pool_name }}"
+      snat: "{{ item.snat }}"
+      description: "{{ item.description | default(omit) }}"
+      all_profiles: 
+        - "{{ item.tcp_profile }}"
+        - "{{ item.http_profile | default(omit) }}"
+      all_rules: "{{ item.irules | default(omit) }}"
+      default_persistence_profile: "{{ item.persist_profile | default(omit) }}"
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+    when: item.clientssl_profile is undefined and item.serverssl_profile is undefined 
+
+  - name: Create virtual server with Client SSL
+    bigip_virtual_server:
+      state: present
+      partition: "{{ item.partition | default('Common') }}"
+      name: "{{ item.vs_name }}"
+      destination: "{{ item.vs_address }}"
+      port: "{{ item.vs_port }}"
+      pool: "{{ item.pool_name }}"
+      snat: "{{ item.snat }}"
+      description: "{{ item.description | default(omit) }}"
+      all_profiles:
+        - "{{ item.tcp_profile }}"
+        - "{{ item.http_profile }}"
+        - name: "{{ item.clientssl_profile }}"
+          context: "{{ item.client_context }}"
+      all_rules: "{{ item.irules | default(omit) }}"
+      default_persistence_profile: "{{ item.persist_profile | default(omit) }}"
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+    when: item.clientssl_profile is defined and item.serverssl_profile is undefined 
+
+  - name: Create virtual server with Client & Server SSL
+    bigip_virtual_server:
+      state: present
+      partition: "{{ item.partition | default('Common') }}"
+      name: "{{ item.vs_name }}"
+      destination: "{{ item.vs_address }}"
+      port: "{{ item.vs_port }}"
+      pool: "{{ item.pool_name }}"
+      snat: "{{ item.snat }}"
+      description: "{{ item.description | default(omit) }}"
+      all_profiles:
+        - "{{ item.tcp_profile }}"
+        - "{{ item.http_profile }}"
+        - name: "{{ item.clientssl_profile }}"
+          context: "{{ item.client_context }}"
+        - name: "{{ item.serverssl_profile }}"
+          context: "{{ item.server_context }}"
+      all_rules: "{{ item.irules | default(omit) }}"
+      default_persistence_profile: "{{ item.persist_profile | default(omit) }}"
+    delegate_to: localhost
+    with_items: "{{ vips }}"    
+    when: item.clientssl_profile is defined and item.serverssl_profile is defined
+
+  - name: Sync configuration if device is part of redundant pair
+    include_role:
+      name: f5configsync
+    when: pair == "yes"   

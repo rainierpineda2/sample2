@@ -1,0 +1,77 @@
+#!/usr/bin/ansible-playbook
+# Description: Replace current iRule in VS with new iRule
+# Author: apined12@its.jnj.com
+---
+- name: F5 Replace iRule 
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars/addltmrulevars.yml
+
+  environment:
+    F5_SERVER: "{{ ansible_host }}"
+    F5_USER: "admin"
+    F5_PASSWORD: "{{ setup_password }}"
+    F5_VALIDATE_CERTS: "false"
+
+# To run using the password file, run this--> ansible-playbook  -i hosts --ask-vault-pass addltmrule.yml
+  tasks:
+# The modules below have been tested to work only on BIGIP appliances version 11.6 and above
+  - name: Gather virtual server information from LTM
+    bigip_facts:
+      include: "virtual_server"
+      filter: "{{ item.vs_name }}"
+    register: checkvs  
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+  - set_fact: 
+      vs_stat: "{{ checkvs.results.0.ansible_facts.virtual_server }}"
+
+  - name: Save current profile information
+    set_fact: 
+      pr_list: "{{ item.value.profile }}"  
+    with_dict: "{{ vs_stat }}"
+    
+  - name: Save current iRule information
+    set_fact: 
+      ir_list: "{{ item.value.rule }}"
+    with_dict: "{{ vs_stat }}"    
+
+  - name: Gather profile types
+    set_fact: xprofiles={{ pr_list|map(attribute='profile_type')|list }}
+
+  - name: Gather current set of iRules
+    set_fact: xrules={{ ir_list|map(attribute='rule_name')|list }}
+
+  - set_fact: 
+      currule: "{{ '/Common/' + item.cur_rule }}"
+    with_items: "{{ vips }}"
+
+  - set_fact: 
+      newrule: "{{ '/Common/' + item.new_rule }}"
+    with_items: "{{ vips }}"
+  
+  - name: Create new rule list by replacing current iRule with new iRule
+    set_fact: new_rules={{ xrules|map('regex_replace', currule, newrule)|list }}
+    when: 'currule in xrules'
+
+  - name: Upload new iRule to F5
+    bigip_irule:
+      module: "ltm"
+      name: "{{ item.new_rule }}"
+      content: "{{ lookup('file', 'files/{{ item.new_rule }}.tcl') }}"
+      state: "present"
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+    when: '"PROFILE_TYPE_HTTP" in xprofiles'
+
+  - name: Modify iRules on virtual server
+    bigip_virtual_server:
+      state: present
+      name: "{{ item.vs_name }}"
+      irules: "{{ new_rules }}"  
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+    when: '"PROFILE_TYPE_HTTP" in xprofiles'

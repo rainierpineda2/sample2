@@ -1,0 +1,82 @@
+---
+- name: Get LTM System Information
+  bigip_facts:
+    server: "{{ inventory_hostname }}"
+    user: "admin"
+    password: "{{ setup_password }}"
+    include: "system_info,self_ip,vlan"
+    validate_certs: no
+  delegate_to: localhost
+
+- name: Display F5 system information
+  debug: msg="Hostname is {{ system_info.system_information.host_name }}"
+
+- name: Display Self-IP information
+  debug: msg="The self-ip for {{ item }} is {{ self_ip[item]['address'] }}"
+  with_items: "{{ self_ip.keys() }}"
+
+- set_fact:
+    vlanname: "{{ item }}"
+    vlanid: "{{ vlan[item]['vlan_id'] }}"
+    miembro: "{{ vlan[item]['member'] }}"
+  with_items: "{{ vlan.keys() }}"
+  register: vlaninfo
+
+- debug: msg="{{ vlaninfo.results }}"
+
+- name: Gather NTP servers
+  bigip_command:
+    commands:
+      - list sys ntp
+    server: "{{ inventory_hostname }}"
+    user: admin
+    password: "{{ setup_password }}"
+    validate_certs: no
+  register: ntplist
+  delegate_to: localhost
+
+- name: Gather DNS servers
+  bigip_command:
+    commands:
+      - list sys dns
+    server: "{{ inventory_hostname }}"
+    user: admin
+    password: "{{ setup_password }}"
+    validate_certs: no
+  register: dnslist
+  delegate_to: localhost  
+
+- name: Gather Syslog servers
+  bigip_command:
+    commands:
+      - list sys syslog
+    server: "{{ inventory_hostname }}"
+    user: admin
+    password: "{{ setup_password }}"
+    validate_certs: no
+  register: loglist
+  delegate_to: localhost 
+
+- name: Gather Remote LDAP Authentication Configuration
+  bigip_command:
+    commands:
+      - list auth ldap all
+    server: "{{ inventory_hostname }}"
+    user: admin
+    password: "{{ setup_password }}"
+    validate_certs: no
+  register: ldaplist
+  delegate_to: localhost
+
+- set_fact:
+    ntpsrv: "{{ ntplist.stdout[0]|regex_findall('((?:[0-9]{1,3}\\.){3}[0-9]{1,3})') }}"
+    dnssrv: "{{ dnslist.stdout[0]|regex_findall('((?:[0-9]{1,3}\\.){3}[0-9]{1,3})') }}"
+    logsrv: "{{ loglist.stdout[0]|regex_findall('((?:[0-9]{1,3}\\.){3}[0-9]{1,3})') }}"
+
+- debug: msg="{{ ldaplist.stdout }}"    
+- debug: msg="NTP server {{ item }} is configured"
+  with_items: "{{ ntpsrv }}"
+- debug: msg="DNS server {{ item }} is configured"
+  with_items: "{{ dnssrv }}"
+- debug: msg="Syslog server {{ item }} is configured"
+  with_items: "{{ logsrv }}"

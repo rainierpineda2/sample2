@@ -1,0 +1,27 @@
+#!/usr/bin/ansible-playbook
+## F5 Fact Check Test
+## Author: That Damn Contractor A. Pineda
+- name: F5 VS Configuration Check
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+   
+  vars_files:
+    - vars/newltmvippy.yml
+# To run using the password file, run this--> ansible-playbook -i hosts vipcheck.yml --ask-vault-pass
+  tasks:
+  - name: Get VIP Information  
+    bigip_facts:
+      server: "{{ ansible_host }}"
+      user: "admin"
+      password: "{{ setup_password }}"
+      include: "virtual_server"
+      filter: "{{ item.vs_name }}"
+      validate_certs: no
+    register: vip_facts  
+    no_log: True  
+    delegate_to: localhost  
+    with_items: "{{ vips }}"
+    
+  - name: Display F5 system information 
+    debug: msg="{{ vip_facts.results|map(attribute='ansible_facts')|list }}" 

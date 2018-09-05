@@ -1,0 +1,74 @@
+---
+site_id: 9999
+peer_site_id: 6907    
+site_bgp_as: 65503    
+peer_bgp_as: 65000    
+ibgp_peer_ip: 10.240.0.2    
+ebgp_peer_ip: 192.168.100.2    
+# Additional BGP networks below follow the same format
+bgpnet:
+  - network: 10.0.202.0
+    mask: 255.255.255.0    
+# - network: x.x.x.x
+#   mask: x.x.x.x       
+ebgp_in_rmap: IPSEC-EBGP-OC-IN
+ebgp_out_rmap: IPSEC-EBGP-OC-OUT    
+region_eigrp_as: 1    
+region: EMEA    
+hub_name: EDC-RTR1    
+hub_peer_ip: 192.168.250.2    
+ftd_int_ip: 10.0.202.94    
+ftd_ext_ip: 10.0.202.98    
+ftd_pat_ip: 60.1.1.1    
+icn_isp: 172.16.100.2
+acl_name: RTR-to-EDC
+tunnel:
+  number: 6907 
+  ip: 192.168.100.1    
+lo1:      
+  ifname: Loopback1
+  ion_no: 14344    
+  ion_ci: ZZTOP    
+  ip: 10.0.202.198
+lo30:       
+  ifname: Loopback30
+  ip: 10.0.240.1
+lo100:    
+  local: 10.0.202.202
+  peer: 10.0.202.201    
+wan:
+  intf: TenGigabitEthernet1/5 
+  abbr: VZB
+  ckt_id: 54321
+  lec_id: 2ROC4U    
+  ip: 172.16.100.1    
+  bw: 100    
+#Please specify additional SLA tracking using the format below      
+#The number will increment by 1, e.g. 102 for the next SLA entry
+sla:
+  - number: 100
+    ip: 172.16.100.2    
+  - number: 101  
+    ip: 50.1.1.1
+sskey: cisco123        
+keyring: TIER2-KEYRING    
+isakmp_profile: TIER2-ISAKMP    
+tset: TIER2-TSET    
+crypto_map: TIER2-CRYPTO-MAP    
+ftd_model: 4110
+ftd_name: RTR_FP    
+ftd_trunk_int: G1/0    
+fp_intf1: TenGigabitEthernet1/6
+# If the Firepower has two connections, replace none below with the interface to use    
+fp_intf2: none    
+rtr_int_ip: 10.0.202.93
+rtr_ext_ip: 10.0.202.97    
+isr_type: 44xx    
+eigrp_conn: 
+  - link: TenGigabitEthernet1/7
+  - link: TenGigabitEthernet1/8    
+icn_core: 10.0.202.0
+icn_bkup: 192.168.50.0    
+mpls: 
+  as: 65000
+  name: VZB    

@@ -1,0 +1,293 @@
+{
+    "_meta": {
+        "hostvars": {
+            "hcsusmm6921lb001": {
+                "ansible_host": "10.19.48.69", 
+                "hostType": "f5"
+            }, 
+            "itsausy5015lb001": {
+                "ansible_host": "10.209.57.123", 
+                "hostType": "f5"
+            }, 
+            "itsbebe5026lb003": {
+                "ansible_host": "10.129.166.44", 
+                "hostType": "f5"
+            }, 
+            "itsbebe5026lb025": {
+                "ansible_host": "10.152.7.196", 
+                "hostType": "f5"
+            }, 
+            "itsbebe5026lb026": {
+                "ansible_host": "10.152.7.197", 
+                "hostType": "f5"
+            }, 
+            "itsbebe6807lb004": {
+                "ansible_host": "10.129.166.45", 
+                "hostType": "f5"
+            }, 
+            "itsbrsj5040lb001": {
+                "ansible_host": "10.97.195.123", 
+                "hostType": "f5"
+            }, 
+            "itsbrsj5040lb002": {
+                "ansible_host": "10.97.195.124", 
+                "hostType": "f5"
+            }, 
+            "itscnsh2063asm001": {
+                "ansible_host": "10.216.249.8", 
+                "hostType": "f5"
+            }, 
+            "itscnsh2063asm002": {
+                "ansible_host": "10.216.249.9", 
+                "hostType": "f5"
+            }, 
+            "itscnsh2063lb003": {
+                "ansible_host": "10.216.249.12", 
+                "hostType": "f5"
+            }, 
+            "itscnsh2063lb004": {
+                "ansible_host": "10.216.249.13", 
+                "hostType": "f5"
+            }, 
+            "itsgbhh1989vp001": {
+                "ansible_host": "10.168.142.4", 
+                "hostType": "f5"
+            }, 
+            "itsgbhh1989vp002": {
+                "ansible_host": "10.168.142.9", 
+                "hostType": "f5"
+            }, 
+            "itsgbhh1989vp003": {
+                "ansible_host": "10.168.142.128", 
+                "hostType": "f5"
+            }, 
+            "itsgbhh1989vp004": {
+                "ansible_host": "10.168.142.133", 
+                "hostType": "f5"
+            }, 
+            "itsjpto9382lb001": {
+                "ansible_host": "10.201.247.123", 
+                "hostType": "f5"
+            }, 
+            "itsjpto9382lb002": {
+                "ansible_host": "10.201.226.212", 
+                "hostType": "f5"
+            }, 
+            "itsjpto9382lb003": {
+                "ansible_host": "10.201.226.213", 
+                "hostType": "f5"
+            }, 
+            "itsjpto9382lb004": {
+                "ansible_host": "10.201.224.52", 
+                "hostType": "f5"
+            }, 
+            "itsjpto9382lb005": {
+                "ansible_host": "10.201.224.53", 
+                "hostType": "f5"
+            }, 
+            "itsmycy1974lb003": {
+                "ansible_host": "10.205.14.4", 
+                "hostType": "f5"
+            }, 
+            "itsmycy1974lb004": {
+                "ansible_host": "10.205.14.5", 
+                "hostType": "f5"
+            }, 
+            "itssgsg1493gt001": {
+                "ansible_host": "10.203.95.24", 
+                "hostType": "f5"
+            }, 
+            "itssgsg1493gt002": {
+                "ansible_host": "10.203.95.25", 
+                "hostType": "f5"
+            }, 
+            "itssgsg1493lb008": {
+                "ansible_host": "10.203.12.36", 
+                "hostType": "f5"
+            }, 
+            "itsusab1988vp001": {
+                "ansible_host": "10.54.14.4", 
+                "hostType": "f5"
+            }, 
+            "itsusab1988vp002": {
+                "ansible_host": "10.54.14.9", 
+                "hostType": "f5"
+            }, 
+            "itsusab1988vp003": {
+                "ansible_host": "10.54.14.128", 
+                "hostType": "f5"
+            }, 
+            "itsusab1988vp004": {
+                "ansible_host": "10.54.14.133", 
+                "hostType": "f5"
+            }, 
+            "itsusmp7379gt001": {
+                "ansible_host": "10.56.7.68", 
+                "hostType": "f5"
+            }, 
+            "itsusmp7379gt002": {
+                "ansible_host": "10.56.7.69", 
+                "hostType": "f5"
+            }, 
+            "itsusmp7379lb003": {
+                "ansible_host": "10.56.9.123", 
+                "hostType": "f5"
+            }, 
+            "itsusmp7379lb004": {
+                "ansible_host": "10.56.9.124", 
+                "hostType": "f5"
+            }, 
+            "itsusmp7379lb005": {
+                "ansible_host": "10.56.10.51", 
+                "hostType": "f5"
+            }, 
+            "itsusmp7379lb006": {
+                "ansible_host": "10.56.10.52", 
+                "hostType": "f5"
+            }, 
+            "itsusmp7379vp001": {
+                "ansible_host": "10.56.10.41", 
+                "hostType": "f5"
+            }, 
+            "itsusmp7379vp002": {
+                "ansible_host": "10.56.10.42", 
+                "hostType": "f5"
+            }, 
+            "itsusra5474am003": {
+                "ansible_host": "10.33.9.13", 
+                "hostType": "f5"
+            }, 
+            "itsusra5474am004": {
+                "ansible_host": "10.33.9.15", 
+                "hostType": "f5"
+            }, 
+            "itsusra5474em001": {
+                "ansible_host": "10.28.15.10", 
+                "hostType": "f5"
+            }, 
+            "itsusra5474lb015": {
+                "ansible_host": "10.28.15.7", 
+                "hostType": "f5"
+            }, 
+            "itsusra5474lb016": {
+                "ansible_host": "10.28.15.8", 
+                "hostType": "f5"
+            }, 
+            "itsusra5474lb033": {
+                "ansible_host": "10.33.0.113", 
+                "hostType": "f5"
+            }, 
+            "itsusra5474lb034": {
+                "ansible_host": "10.33.0.114", 
+                "hostType": "f5"
+            }, 
+            "itsusra5474vp001": {
+                "ansible_host": "10.39.8.4", 
+                "hostType": "f5"
+            }, 
+            "itsusra5474vp002": {
+                "ansible_host": "10.39.8.9", 
+                "hostType": "f5"
+            }, 
+            "janbebe5026vp001": {
+                "ansible_host": "10.129.166.56", 
+                "hostType": "f5"
+            }, 
+            "janbebe6807vp002": {
+                "ansible_host": "10.129.166.57", 
+                "hostType": "f5"
+            }, 
+            "janjpnc5228lb001": {
+                "ansible_host": "10.200.97.17", 
+                "hostType": "f5"
+            }, 
+            "medcnsu9456lb001": {
+                "ansible_host": "10.192.202.36", 
+                "hostType": "f5"
+            }, 
+            "medcnsu9456lb002": {
+                "ansible_host": "10.192.202.38", 
+                "hostType": "f5"
+            }, 
+            "ncsaspacbipex01": {
+                "ansible_host": "10.209.16.203", 
+                "hostType": "f5"
+            }, 
+            "ncsaspacbipex02": {
+                "ansible_host": "10.209.16.204", 
+                "hostType": "f5"
+            }, 
+            "visusja5619lb001": {
+                "ansible_host": "10.16.43.24", 
+                "hostType": "f5"
+            }, 
+            "visusja5619lb002": {
+                "ansible_host": "10.16.43.25", 
+                "hostType": "f5"
+            }
+        }
+    }, 
+    "f5": {
+        "hosts": [
+            "hcsusmm6921lb001", 
+            "itsausy5015lb001", 
+            "itsbebe5026lb003", 
+            "itsbebe5026lb025", 
+            "itsbebe5026lb026", 
+            "itsbebe6807lb004", 
+            "itsbrsj5040lb001", 
+            "itsbrsj5040lb002", 
+            "itscnsh2063asm001", 
+            "itscnsh2063asm002", 
+            "itscnsh2063lb003", 
+            "itscnsh2063lb004", 
+            "itsgbhh1989vp001", 
+            "itsgbhh1989vp002", 
+            "itsgbhh1989vp003", 
+            "itsgbhh1989vp004", 
+            "itsjpto9382lb001", 
+            "itsjpto9382lb002", 
+            "itsjpto9382lb003", 
+            "itsjpto9382lb004", 
+            "itsjpto9382lb005", 
+            "itsmycy1974lb003", 
+            "itsmycy1974lb004", 
+            "itssgsg1493gt001", 
+            "itssgsg1493gt002", 
+            "itssgsg1493lb008", 
+            "itsusab1988vp001", 
+            "itsusab1988vp002", 
+            "itsusab1988vp003", 
+            "itsusab1988vp004", 
+            "itsusmp7379gt001", 
+            "itsusmp7379gt002", 
+            "itsusmp7379lb003", 
+            "itsusmp7379lb004", 
+            "itsusmp7379lb005", 
+            "itsusmp7379lb006", 
+            "itsusmp7379vp001", 
+            "itsusmp7379vp002", 
+            "itsusra5474am003", 
+            "itsusra5474am004", 
+            "itsusra5474em001", 
+            "itsusra5474lb015", 
+            "itsusra5474lb016", 
+            "itsusra5474lb033", 
+            "itsusra5474lb034", 
+            "itsusra5474vp001", 
+            "itsusra5474vp002", 
+            "janbebe5026vp001", 
+            "janbebe6807vp002", 
+            "janjpnc5228lb001", 
+            "medcnsu9456lb001", 
+            "medcnsu9456lb002", 
+            "ncsaspacbipex01", 
+            "ncsaspacbipex02", 
+            "visusja5619lb001", 
+            "visusja5619lb002"
+        ], 
+        "vars": {
+            "listLength": 56
+        }
+    }
+}

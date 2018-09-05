@@ -1,0 +1,40 @@
+#!/usr/bin/f5_ansible-playbook
+## F5 Command Run Test
+## Author: That Damn Contractor A. Pineda
+---
+- name: Transfer SSL cert & key to F5 
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    cert_name: "domain.jnjlab.com"
+    mgmt_ip: "10.0.209.86"
+    setup_user: "admin"
+    filepath: "/home/apined12/f5_ansible/playbooks/files/domain.jnjlab.com"
+    filechain: "/home/apined12/f5_ansible/playbooks/files/jnj-chain"
+
+  vars_prompt:
+    - name: "setup_password"
+      prompt: "Enter password"
+      private: yes
+
+  tasks:
+  - name: Transfer SSL cert to F5  
+    command: python file_xfer.py {{ mgmt_ip }} {{ setup_user }} {{ setup_password }} {{ filepath }}.crt
+    args:
+      chdir: /home/apined12/f5_ansible/playbooks/files
+    delegate_to: localhost
+
+  - name: Transfer SSL key to F5
+    command: python file_xfer.py {{ mgmt_ip }} {{ setup_user }} {{ setup_password }} {{ filepath }}.key
+    args:
+      chdir: /home/apined12/f5_ansible/playbooks/files
+    delegate_to: localhost
+
+  - name: Transfer chain cert to F5
+    command: python file_xfer.py {{ mgmt_ip }} {{ setup_user }} {{ setup_password }} {{ filechain }}.crt
+    args:
+      chdir: /home/apined12/f5_ansible/playbooks/files
+    delegate_to: localhost
+    when: not((filechain is undefined) or (filechain is none) or (filechain|trim == ''))  

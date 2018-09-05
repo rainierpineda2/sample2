@@ -1,0 +1,28 @@
+#!/usr/bin/ansible-playbook
+## F5 Module Test 
+## Author: That Damn Contractor A. Pineda
+## This playbook has been tested to work on v11.5 and below only
+# It does not work for v11.6 and up
+- name: F5 Custom Module
+  hosts: localhost
+  connection: local
+  gather_facts: no
+   
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter password"
+    private: yes
+# To run with output formatting 'hack', run this--> ansible-playbook testbash.yml | sed 's/\\n/\n/g'
+  tasks:
+  - name: Run F5 run utility command 
+    f5runcmd:
+      server: "10.0.209.86"
+      username: "admin"
+      password: "{{ setup_password }}"
+      shellcmd: 
+        - tmsh show sys version
+        - "netstat -rnv"
+    register: result
+  - debug: 
+      msg: "{{ result }}"

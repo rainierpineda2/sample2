@@ -1,0 +1,26 @@
+#!/usr/bin/ansible-playbook
+## F5 Command Run Test
+## Author: That Damn Contractor A. Pineda
+- name: Test F5 Module
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter password"
+    private: yes
+# To run using the password file, run this--> ansible-playbook bigip_cmd.yml -e@sekreto.yml -vv
+  tasks:
+  - name: Test bigip_command module...
+    bigip_command:
+      commands: show sys version
+      server: "10.0.1.105"
+      password: "{{ setup_password }}"
+      user: "admin"
+      validate_certs: "false"
+    register: result
+    delegate_to: localhost
+  - debug:
+      var: result.stdout_lines 

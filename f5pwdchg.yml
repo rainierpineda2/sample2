@@ -1,0 +1,37 @@
+#!/usr/bin/ansible-playbook
+## F5 Privileged Account Administration
+## Author: That Damn Contractor A. Pineda
+## 
+---
+- name: F5 Privileged Account Admnistration
+  hosts: bigip
+  remote_user: root
+  gather_facts: no
+
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "curr_password"
+    prompt: "Enter current password"
+    private: yes
+
+  - name: "new_password"
+    prompt: "Enter new password"
+    private: yes
+# To run using the password file, run this--> ansible-playbook -i hosts --ask-pass f5pwdchg.yml
+  tasks:
+  - name: Identify F5 devices for password change
+    set_fact:
+      mgmt_ip: "{{ inventory_hostname }}"
+
+  - name: Change F5 device Admin password
+    bigip_user:
+      server: "{{ mgmt_ip }}"
+      user: "admin"
+      password: "{{ curr_password }}"
+      state: "present"
+      username_credential: admin
+      password_credential: "{{ new_password }}"
+    delegate_to: localhost  
+
+  - name: Change F5 device Root password
+    raw: echo -e "{{ new_password }}\n{{ new_password }}\n" | passwd

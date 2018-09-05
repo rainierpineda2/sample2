@@ -1,0 +1,51 @@
+---
+# Variable file for deploying new F5 VIPs
+vips:
+  - vs_name: VS-testvirtual-443
+    vs_desc: 'Test Virtual on port 443'
+    vs_address: 192.168.204.204
+    vs_port: 443    
+    vs_protocol: PROTOCOL_TCP    
+    snat: Automap
+    vs_profile: tcp-lan-optimized
+# If there is no HTTP profile, use None        
+    http_profile: http   
+# NOTE: The following items below need to be populated with the proper SSL profiles
+# for each VIP; otherwise use None as the value. SSL profiles are applied on virtual servers
+# that use HTTPS. 
+# An entry on the serverssl_profile requires an entry on the clientssl_profile
+    clientssl_profile: clientssl-insecure-compatible  
+    serverssl_profile: serverssl-insecure-compatible
+    pool_name: my-pool 
+# Set min_act_mem value to 0 if priority group activation is not needed, otherwise put a
+# value for minimum number of members in the high priority group before the low priority groups
+# take over       
+    min_act_mem: 0   
+    def_persist: source_addr    
+    monitors:
+      - http    
+    lb_method: LB_METHOD_LEAST_CONNECTION_MEMBER
+    members:
+      - address: 172.16.100.3    
+        port: 80
+        priority: 10    
+      - address: 172.16.100.4
+        port: 80
+        priority: 1    
+  - vs_name: VS-testvirtual-80
+    vs_desc: 'Test Virtual on port 80'
+    vs_address: 192.168.204.204
+    vs_port: 80
+    vs_protocol: PROTOCOL_TCP
+    snat: Automap
+    vs_profile: tcp-lan-optimized
+    http_profile: http
+    clientssl_profile: None    
+    serverssl_profile: None    
+    pool_name: None 
+    min_act_mem: 0    
+    def_persist: None    
+# NOTE: iRules specially those that use the HTTP events require an HTTP profile applied
+    irules:
+      - country_block_v1
+      - whitey  

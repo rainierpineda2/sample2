@@ -1,0 +1,62 @@
+#!/usr/bin/f5_ansible-playbook
+---
+- name: NXOS Test
+  hosts: nxos 
+  connection: local
+  gather_facts: no
+
+  vars:
+    now: "{{ lookup('pipe','date +%Y%m%d')}}"
+
+  tasks:   
+  - name: Obtain login credentials
+    include_vars:
+      dir: 'vars/nexus'
+  
+  - name: Define provider
+    set_fact:
+      provider:
+        host: "{{ inventory_hostname }}"
+        username: "{{ creds['username'] }}" 
+        password: "{{ creds['password'] }}"
+                                                                           
+  - name: Get DNS server
+    nxos_command:
+      commands: "show run | i name-server"
+      provider: "{{ provider }}"
+    register: nxosfacts
+
+  - set_fact:
+      cur_dns: "{{ nxosfacts.stdout }}"
+  - debug: var=cur_dns 
+
+  - name: Remove old DNS and set new DNS server        
+    nxos_config:
+      lines:
+        - no {{ item.0 }}
+        - ip name-server {{ item.1 }}  
+      provider: "{{ provider }}"    
+    register: whathappened      
+    with_nested: 
+      - "{{ cur_dns }}"  
+      - "{{ new_dns }}"  
+    when: cur_dns != ''    
+
+  - name: Remove old DNS and set new DNS server
+    nxos_config:
+      lines:
+        - ip name-server {{ item }}
+      provider: "{{ provider }}"
+    register: whathappened
+    with_items:
+      - "{{ new_dns }}"
+    when: cur_dns == ''
+                                                             
+  - debug: var=whathappened      
+
+#  - name: Store config results to local file
+#    copy:
+#      content: "{{ nxosfacts | to_nice_json }}"
+#      dest: "data/{{ inventory_hostname }}-get-dns-{{ now }}.cfg"
+#    changed_when: false
+#    delegate_to:  localhost

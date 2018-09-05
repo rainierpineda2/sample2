@@ -1,0 +1,21 @@
+#!/usr/bin/ansible-playbook
+## F5 Generate qkview and download to Ansible directory
+---
+- name: F5 Generate qkview 
+  hosts: tmsh 
+  remote_user: root
+  gather_facts: no
+
+  vars:
+    mgmt_ip: "{{ inventory_hostname }}"
+    setup_user: "admin"
+    now: "{{ lookup('pipe','date +%Y%m%d')}}"
+
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter admin password"
+    private: yes
+# To run using the password file, run this--> ansible-playbook -i hosts --ask-pass <yaml-script-name>.yml -e@sekreto.yml
+  roles:
+    - f5qkview

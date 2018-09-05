@@ -1,0 +1,20 @@
+---
+# This variable file makes the assumption that most GTM request will map 
+# only a single pool to one WideIP entry. A pool can can already point to 
+# multiple data centers for HA
+mgmt_ip: "{{ ansible_host }}"
+setup_user: admin    
+wip:
+  - wideip: my-wide-ip.jnjlab.com
+    wip_lb: global-availability
+    wip_pool: NA-Test22    
+pool_gtm: 
+  - name: NA-Test22
+    pref_lb: global-availability
+#    alt_lb: none  
+#    fall_lb: none    
+    v_server: 
+      - name: NA-LAB-Raritan-VE
+        vs_ltm: vs_test_88
+        address: 1.1.1.5
+        port: 88    

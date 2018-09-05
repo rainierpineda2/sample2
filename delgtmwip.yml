@@ -1,0 +1,35 @@
+#!/usr/bin/ansible-playbook
+---
+## Ansible Script to delete WIP and gtm pools
+## Author: apined12@its.jnj.com
+- name: Delete GTM WIP and pool
+  hosts: tmsh 
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars/newwipvars.yml
+
+#  To run using the password file, run this--> ansible-playbook -i hosts delgtmwip.yml --ask-vault-pass --limit labusra5474lb005
+  tasks:
+  - name: Delete WideIP   
+    bigip_gtm_wide_ip:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      wide_ip: "{{ item.wideip }}"
+      type: a
+      state: absent 
+    delegate_to: localhost
+    with_items: "{{ wip }}"
+
+  - name: Delete GTM Pool
+    bigip_gtm_pool:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      state: absent
+      name: "{{ item.name }}"
+      type: a
+    delegate_to: localhost
+    with_items: "{{ pool_gtm }}"    

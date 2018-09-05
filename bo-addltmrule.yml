@@ -1,0 +1,72 @@
+#!/usr/bin/ansible-playbook
+# Description: Back out change to add new iRule to a VS
+# Author: apined12@its.jnj.com
+---
+- name: Back out F5 Add New iRule 
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars/addltmrulevars.yml
+
+  environment:
+    F5_SERVER: "{{ ansible_host }}"
+    F5_USER: "admin"
+    F5_PASSWORD: "{{ setup_password }}"
+    F5_VALIDATE_CERTS: "false"
+
+# To run using the password file, run this--> ansible-playbook  -i hosts --ask-vault-pass addltmrule.yml
+  tasks:
+  - name: Gather virtual server information from LTM
+    bigip_facts:
+      include: "virtual_server"
+      filter: "{{ item.vs_name }}"
+    register: checkvs  
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+  - set_fact: 
+      vs_stat: "{{ checkvs.results.0.ansible_facts.virtual_server }}"
+
+  - name: Save current profile information
+    set_fact: pr_list="{{ item.value.profile }}"  
+    no_log: True
+    with_dict: "{{ vs_stat }}"
+
+  - name: Save current iRule information
+    set_fact: ir_list="{{ item.value.rule }}"
+    no_log: True
+    with_dict: "{{ vs_stat }}"    
+
+  - name: Gather profile types
+    set_fact: xprofiles={{ pr_list|map(attribute='profile_type')|list }}
+
+  - name: Gather current set of iRules
+    set_fact: xrules={{ ir_list|map(attribute='rule_name')|list }}
+
+  - name: Format name of iRule to be deleted
+    set_fact: remrule="/Common/Redirect_{{ item.vs_name }}"  
+    with_items: "{{ vips }}"
+
+  - name: Recompile old set of iRules (remove newly added iRule)
+    set_fact: 
+      old_rules: "{{ xrules|reject('search', remrule)|list }}"
+    with_items: "{{ vips }}"
+
+  - name: Roll back previous iRule list to virtual server (using midstream fix due for Ansible 2.5 release)
+    bigip_virtual_server:
+      state: present
+      name: "{{ item.vs_name }}"
+      all_rules: "{{ old_rules }}"  
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+    when: '"PROFILE_TYPE_HTTP" in xprofiles'
+
+  - name: Remove iRule from F5
+    bigip_irule:
+      module: "ltm"
+      name: "Redirect_{{ item.vs_name }}"
+      #      content: "{{ lookup('file', 'files/Redirect_{{ item.vs_name }}.tcl') }}"
+      state: "absent"
+    delegate_to: localhost
+    with_items: "{{ vips }}"    

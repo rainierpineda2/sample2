@@ -1,0 +1,21 @@
+---
+- name: Get LTM Virtual Server Facts
+  bigip_facts:
+    include: "virtual_server"
+    filter: "{{ item.vs_name }}"
+    validate_certs: no
+  register: vs_facts  
+  delegate_to: localhost  
+  with_items: "{{ vips }}"
+
+- name: Set target variables 
+  set_fact: vs_target=/Common/{{ item.vs_name }}
+  with_items: "{{ vips }}"
+
+- set_fact: vipdetail={{ vs_facts.results|map(attribute='ansible_facts.virtual_server')|list }}
+- set_fact: rules={{ vipdetail|map(attribute=vs_target)|list }}
+- set_fact: lrule={{ item.rule }}
+  no_log: True
+  with_items: "{{ rules }}"
+- name: Display rules
+  debug: msg={{ lrule }}

@@ -1,0 +1,13 @@
+# This file will contain the list of ccTLD's to add/delete
+# from the internal data-group blacklist
+mgmt_ip: "{{ ansible_host }}"
+setup_user: "admin"    
+# Change the value of mode below to either ADD if you want to add country code to blacklist or
+# change to DELETE if you want to remove from blacklist
+# Use an underscore to separate country names with more than one word.
+# The reference file is located on files/reversecc.csv
+mode : ADD
+ccTLD:
+  - iran
+  - iraq
+  - canary_islands  

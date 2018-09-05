@@ -1,0 +1,23 @@
+#!/usr/bin/ansible-playbook
+# Description: Modify pool members
+# Author: apined12@its.jnj.com
+---
+- name: Modify pool members (add/delete)
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+ 
+  environment:
+    F5_SERVER: "{{ ansible_host }}"
+    F5_USER: "admin"
+    F5_PASSWORD: "{{ setup_password }}"
+    F5_VALIDATE_CERTS: "false"
+
+# To run using the password file, run this--> ansible-playbook  -i hosts --extra-vars "pair=yes" changepool_role.yml
+  roles:
+     - changepool_vars
+     - checkltmpool
+     - changepool
+     - { role: f5configsync, when: pair == "yes" }
+     - savef5config
+     - checkltmpool

@@ -1,0 +1,31 @@
+#!/usr/bin/ansible-playbook
+### Cisco IOS show int 
+### Author: The Ansible scripter formerly known as network engineer
+---
+- name: Log into Cisco and display interface status
+  hosts: ios 
+  connection: local
+  gather_facts: no
+
+  tasks:   
+  - name: Obtain login credentials
+    include_vars:
+      dir: "vars/t2"
+                       
+  - name: Define provider
+    set_fact:
+      provider:
+        host: "{{ inventory_hostname }}"
+        username: "{{ creds['username'] }}" 
+        password: "{{ creds['password'] }}"
+        auth_pass: "{{ creds['auth_pass'] }}"
+                                                                           
+  - name: Run 'show interface fa1'
+    ios_command:
+      provider: "{{ provider }}"
+      commands: 
+        - show int fa1
+    register: interface 
+
+  - debug: 
+      msg: "{{ interface.stdout_lines }}"   

@@ -1,0 +1,6 @@
+---
+- name: Save F5 configuration
+  bigip_config:
+    save: yes
+    validate_certs: no
+  delegate_to: localhost

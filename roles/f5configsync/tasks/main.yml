@@ -1,0 +1,32 @@
+---
+- name: Determine active device facts
+  bigip_facts:
+    include: "device"
+    validate_certs: "no"
+  delegate_to: localhost
+
+- name: Get management IP of active device
+  set_fact:
+    cur_active: "{{ device[item]['management_address'] }}"
+  when: device[item]['failover_state'] == 'HA_STATE_ACTIVE'
+  with_items: "{{ device.keys() }}"
+
+- name: Determine device group facts
+  bigip_facts:
+    include: "device_group"
+    validate_certs: "no"
+  delegate_to: localhost
+
+- name: Get device group name
+  set_fact:
+    dg_name: "{{ item|regex_replace('/Common/') }}"
+  when: device_group[item]['type'] == 'DGT_FAILOVER'
+  with_items: "{{ device_group.keys() }}"
+
+- name: Sync configuration from device to failover device group 
+  bigip_configsync_actions:
+    device_group: "{{ dg_name }}"
+    sync_device_to_group: yes
+    validate_certs: no
+  delegate_to: localhost
+  when: ansible_host == cur_active

@@ -1,0 +1,66 @@
+# This file contains the variables necessary to onboard an F5 device
+# into the JnJ network environment
+---
+mgmt_ip: "{{ inventory_hostname }}"
+setup_user: admin
+bindpw: Winter2017!
+device:    
+  - hostname: labusra5474lb008.jnjlab.com    
+    mgmt_addr: 10.0.160.134
+#    license: "{{ lookup('file', 'files/lb008_license.lic') }}"
+#    dossier: "{{ lookup('file', 'files/lb008_dossier.txt') }}"    
+    selfip:
+       - name: ext_selfip
+         addr: 10.0.161.10
+         mask: 255.255.255.0
+         vlan: External
+       - name: int_selfip
+         addr: 10.0.162.10
+         mask: 255.255.255.0
+         vlan: Internal   
+  - hostname: labusra5474lb009.jnjlab.com
+    mgmt_addr: 10.0.160.135
+#    license: "{{ lookup('file', 'files/lb009_license.lic') }}"
+#    dossier: "{{ lookup('file', 'files/lb009_dossier.txt') }}"    
+    selfip:
+      - name: ext_selfip
+        addr: 10.0.161.11
+        mask: 255.255.255.0
+        vlan: External
+      - name: int_selfip
+        addr: 10.0.162.11
+        mask: 255.255.255.0
+        vlan: Internal    
+# The following should be populated if the interfaces will be 'bundled' together
+# and connected to a switch Etherchannel interface. 
+# Note: If the F5 device is VE (virtual edition) it is not capable of LACP trunks.
+# If there is no need for trunk configuration, set var trunk: ""  
+#
+#trunk_name: PO40
+#trunk_int: 
+#  - 1.1
+#  - 1.2  
+#
+# For the item below, put False for tagged_intf if you wan to create one VLAN per interface
+# otherwise, put True and assign the same interface for every VLAN you create 
+# =========================================================================================
+# Note: You cannot use trunk interface to create VLANs on F5 VE's; F5 VE's can only use the virtual interfaces
+#
+vlans:
+  - name: Internal
+    vlan_tag: 3900    
+    tagged_intf: False    
+    intf: 
+      - 1.1
+  - name: External    
+    vlan_tag: 3901
+    tagged_intf: False    
+    intf:
+      - 1.2   
+dns_servers: ['208.67.222.222','208.67.220.220']
+# Use appropriate location below or use UTC   
+ntp_timezone: America/New_York
+ntp_servers: ['10.0.5.11','10.0.5.115']  
+syslog:
+  - ip: 10.0.10.100    
+    port: 514    

@@ -1,0 +1,10 @@
+---
+- name: Get LTM Virtual Server Information
+  bigip_facts:
+    include: "virtual_server"
+    filter: "{{ item.vs_name }}"
+  delegate_to: localhost
+  with_items: "{{ vips }}"
+
+- name: Display VIP Information
+  debug: msg="{{ virtual_server }}"  

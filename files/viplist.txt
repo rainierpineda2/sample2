@@ -1,0 +1,4 @@
+/Common/vip11 172.16.5.6 80 /Common/testpool1
+/Common/vip12 172.16.5.7 80 /Common/testpool2
+/Common/vip13 172.16.5.8 80 /Common/testpool3
+/Common/vip14 172.16.5.9 80 /Common/testpool4

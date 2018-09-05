@@ -1,0 +1,28 @@
+---
+# Variable file for deploying new F5 VIPs
+vips:
+  - vs_name: VS-testvirtual-80
+    description: 'Test Virtual'
+    vs_address: 192.168.204.204
+    vs_port: 80    
+    snat: None
+    tcp_profile: tcp
+    http_profile: http    
+# NOTE: The following items below need to be populated with the proper SSL profiles
+# for each VIP; otherwise leave them commented out. SSL profiles are applied on virtual servers
+# that use HTTPS. ONLY comment out profiles you need.    
+#    clientssl_profile: clientssl-insecure-compatible  
+#    client_context: clientside    
+#    serverssl_profile: serverssl-insecure-compatible
+#    server_context: server-side    
+    pool_name: my-pool 
+    monitors:
+      - http    
+# NOTE: iRules specially those that use the HTTP events require an HTTP profile applied        
+    irules: ['country_block_v2']
+    lb_method: least-connections-member    
+    members:
+      - port: 80 
+        address: 172.16.100.3    
+      - port: 80
+        address: 172.16.100.4

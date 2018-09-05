@@ -1,0 +1,36 @@
+#!/usr/bin/ansible-playbook
+---
+# Name: Test F5 Ansible YML
+# By That Damn Contractor: A. Pineda
+# Uses icontrol_install_config.py program of Mark Wall from WWT.
+# This is installed on /usr/share/ansible
+- name: F5 Setup
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    mgmt_ip: "10.0.209.86"
+    setup_user: "admin"
+    #  To run using the password file, run this--> ansible-playbook viptest01.yml --ask-vault-pass -e@sekreto.yml -vv
+  tasks:
+  - name: Create LTM Pool (default method of POST, fallback PATCH)
+    icontrol_install_config:
+      uri: "/mgmt/tm/ltm/pool"
+      body: '{"name":"test-pool",
+              "monitor":"https",
+              "members":[{"name":"ServerA:443","address":"172.16.200.1"},
+                         {"name":"ServerB:443","address":"172.16.200.2"}]}'
+      host: "{{ mgmt_ip }}"
+      username: "{{setup_user}}"
+      password: "{{setup_password}}"
+  - name: Create LTM Virtual Server
+    icontrol_install_config:
+      uri: "/mgmt/tm/ltm/virtual"
+      body: '{"name":"VS_test_virtual_443",
+              "destination":"192.168.204.185:443",
+              "pool":"test-pool","sourceAddressTranslation":{"type": "automap"},
+              "profiles":[{"kind":"tm:ltm:virtual:profile","name":"tcp"}]}'
+      host: "{{ mgmt_ip }}"
+      username: "{{setup_user}}"
+      password: "{{setup_password}}"

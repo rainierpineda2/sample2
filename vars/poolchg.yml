@@ -1,0 +1,28 @@
+---
+# Variable file for modifying F5 pool members
+vips:
+  - vs_name: VS-testvirtual-443
+    vs_address: 192.168.204.204
+    vs_port: 443    
+    pool_name: my-pool 
+# Set min_act_mem value to 0 if priority group activation(PGA) is not needed, otherwise put a
+# value for minimum number of members in the high priority group before the low priority groups
+# take over. Default priority for pool members should be set to 0 if PGA is not needed       
+    min_act_mem: 0   
+    members:
+#      - address: 192.168.100.10
+#        port: 80
+#        priority: 0 
+#        mode: add 
+#      - address: 192.168.100.11
+#        port: 80
+#        priority: 0
+#        mode: add
+      - address: 172.16.100.3
+        port: 80
+        priority: 0
+        mode: add 
+      - address: 172.16.100.4
+        port: 80
+        priority: 0
+        mode: add     

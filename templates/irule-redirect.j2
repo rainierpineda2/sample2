@@ -1,0 +1,7 @@
+when HTTP_REQUEST {
+   switch [string tolower [HTTP::host]] {
+      {% for uri in uris %}
+      "{{ uri.old }}" { HTTP::redirect "https://{{ uri.new }}" }
+      {% endfor %}
+   }
+}

@@ -1,0 +1,60 @@
+#!/usr/bin/ansible-playbook
+# Test F5 Ansible modules
+# Author: That Damn Contractor
+- name: F5 Setup Using F5-Ansible modules
+  hosts: tmsh 
+  connection: local
+  gather_facts: no
+ 
+  vars_files:
+    - vars/newvipvars.yml
+
+  vars:  
+    mgmt_ip: "{{ inventory_hostname }}"
+    setup_user: "admin"
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter password"
+    private: yes
+    #  To run using the password file, run this--> ansible-playbook -i hosts <yaml-name>.yml -e@sekreto.yml
+  tasks:
+# The modules below have been tested to work only on BIGIP appliances version 11.6 and above
+  - name: Delete virtual server
+    bigip_virtual_server:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      state: "absent"
+      partition: "Common"
+      name: "{{ item.vs_name }}"
+      validate_certs: "no"
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+  
+  - name: Delete pool members
+    bigip_pool_member:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      state: "absent"
+      pool: "{{ item.0.pool_name }}"
+      partition: "Common"
+      host: "{{ item.1.address }}"
+      port: "{{ item.1.port }}"
+      validate_certs: "no"
+    delegate_to: localhost
+    with_subelements: 
+      - "{{ vips }}"  
+      - members
+
+  - name: Delete pool
+    bigip_pool:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      state: "absent"
+      name: "{{ item.pool_name }}"
+      partition: "Common"
+    delegate_to: localhost
+    with_items: "{{ vips }}"

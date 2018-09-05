@@ -1,0 +1,29 @@
+#!/usr/bin/ansible-playbook
+## F5 Managing the data group blacklist
+## Author: apined12@its.jnj.com; jsimone@its.jnj.com
+# To run using the password file, run this--> ansible-playbook -i hosts f5showblacklist.yml --ask-vault-pass
+- name: Check content of datagroup blacklist
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+
+  tasks:
+  - name: Gather countries that are in data group blacklist
+    uri:
+      url: "https://{{ ansible_host }}/mgmt/tm/ltm/data-group/internal/~Common~blacklist"
+      user: admin
+      password: "{{ setup_password }}"
+      force_basic_auth: yes
+      validate_certs: no
+    register: banned
+    delegate_to: localhost 
+
+  - name: Create a list of banned countries
+    set_fact: 
+      forbid: "{{ forbid|default([]) + [{'code': lookup('csvfile', '{} file=files/countrycode.csv delimiter=, col=0'.format(item.name|upper)),'country': lookup('csvfile', '{} file=files/countrycode.csv delimiter=, col=1'.format(item.name|upper))}] }}"
+    with_items: "{{ banned.json.records }}"
+    when: item.name != "xx"
+
+  - name: List of blacklisted countries
+    debug: 
+      msg: "{{ forbid }}"

@@ -1,0 +1,618 @@
+#!/usr/bin/f5_ansible-playbook
+## Cisco IOS Tier 2 Remote Deployment 
+## Author: That Damn Contractor A. Pineda
+##=======================================
+## Please edit the variable file t2_remote_var.yml for remote site-specific
+## information. All the field must be populated. Take note of conditional variables
+## such as isr_type and fp_intf2. If you are using two connections going to Firepower,
+## replace none with the proper interface
+#
+## The ios_cred file contains the router login credentials
+## The hosts file contains the management IP of the remote site WAN router
+## There is a matching Ansible script for Tier 2 hub side#
+## Please run this code using this command: ansible-playbook -i hosts t2_remote_deploy.yml
+---
+- name: Deploy configuration to Tier-2 Remote Site
+  hosts: ios 
+  connection: local
+  gather_facts: no
+
+  tasks:   
+  - name: Obtain login credentials and variables
+    include_vars: 
+      dir: 'vars/ib'                 
+
+  - name: Define provider
+    set_fact:
+      provider:
+        host: "{{ inventory_hostname }}"
+        username: "{{ creds['username'] }}" 
+        password: "{{ creds['password'] }}"
+        auth_pass: "{{ creds['auth_pass'] }}"
+                                                                           
+#  - name: Create INTERNET VRF
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes    
+#      parents: "vrf definition INTERNET"
+#      lines:
+#        - description IPSEC Tunnel VRF
+#        - rd {{ site_id }}:1  
+#        - address-family ipv4
+#        - exit-address-family
+
+#  - name: Create ACL
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "ip access-list extended {{ acl_name }}"
+#      lines:
+#        - permit gre host {{ lo100.local }} host {{ lo100.peer }}
+#        - permit ip host {{ lo100.local }} host {{ lo100.peer }}    
+#      match: exact
+
+#  - name: Create Loopback1
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface {{ lo1.ifname }}"
+#      lines:
+#        - "description *** ITSM: {{ hub_name }}; PSTN# {{ lo1.ion_no }}Management; ION {{ lo1.ion_ci }} ***"
+#        - ip address {{ lo1.ip }} 255.255.255.255
+
+#  - name: Create Loopback30
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface {{ lo30.ifname }}"
+#      lines:
+#        - "description *** ITSM: {{ hub_name }} iBGP Peering Loopback Interface ***"
+#        - ip address {{ lo30.ip }} 255.255.255.255
+
+#  - name: Create Loopback100
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface Loopback100"
+#      lines:
+#        - description ***GRE Tunnel Source IP for eBGP Backup to {{ hub_name }}***
+#        - vrf forwarding INTERNET
+#        - ip address {{ lo100.local }} 255.255.255.255
+
+#  - name: Create IP SLA Tracks 
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "ip sla {{ item.number }}"
+#      lines:
+#        - icmp-echo {{ item.ip }} source-interface Loopback1
+#        - tag IPSLA to Track Local Internet Link Status
+#        - frequency 6
+#      after:     
+#        - ip sla schedule {{ item.number }} life forever start-time now
+#        - track {{ item.number }} ip sla {{ item.number }} reachability   
+#    with_items: "{{ sla }}"
+
+#  - name: Create IP SLA Tracker
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - object {{ item.number }}
+#      before: "track 50 list boolean or"
+#      after: "delay down 18 up 30"     
+#    with_items: "{{ sla }}"            
+
+#  - name: Create Circuit Shaper Policy 
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents:
+#        - policy-map Internet_Shaping_{{ wan.bw }}
+#        - class class-default  
+#      lines:
+#        - shape average {{ wan.bw }}000000
+
+#  - name: Configure Static Routes
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - ip route 0.0.0.0 0.0.0.0 {{ ftd_int_ip }} 5 name Internet_Breakout track 50 
+#        - ip route {{ icn_isp }} 255.255.255.255  {{ fd_int_ip }} name ISP_Link
+#        - ip route vrf INTERNET 0.0.0.0 0.0.0.0 {{ icn_isp }} 
+#        - ip route vrf INTERNET {{ ftd_pat_ip }} 255.255.255.255 {{ ftd_ext_ip }} name FIREPOWER_PAT
+
+#  - name: Create WAN Interface
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface {{ wan.intf }}"
+#      lines:
+#        - "description *** {{ wan.bw }}, {{ wan.abbr }} CKT ID: {{ wan.ckt_id }}; LEC CKT ID: {{ wan.lec_id }} ***" 
+#        - vrf forwarding INTERNET
+#        - ip address {{ wan.ip }} 255.255.255.252
+#        - bandwidth {{ wan.bw }}000  
+#        - service-policy output Internet_Shaping_{{ wan.bw }}  
+#        - no cdp enable  
+#    with_items: "{{ wan }}"      
+
+#  - name: Create GRE Tunnel
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface Tunnel{{ tunnel.number }}"
+#      lines:
+#        - description ***GRE Tunnel to {{ hub_name }}***
+#        - ip address {{ tunnel.ip }} 255.255.255.252
+#        - ip mtu 1400
+#        - ip tcp adjust-mss 1360
+#        - keepalive 10 3
+#        - tunnel source Loopback100
+#        - tunnel destination {{ lo100.peer }}
+#        - tunnel path-mtu-discovery  
+#        - tunnel vrf INTERNET
+
+#  - name: Create Crypto Keyring          
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "crypto keyring {{ keyring }} vrf INTERNET"
+#      lines:
+#        - description IPSec Shared Secret Key and Peers
+#        - local-address {{ wan.intf }}
+#        - pre-shared-key address {{ hub_peer_ip }} key {{ sskey }}  
+
+#  - name: Create Crypto ISAKMP Policy
+#    ios_config:
+#      provider: "{{ provider }}"  
+#      authorize: yes
+#      parents: "crypto isakmp policy 100"
+#      lines:
+#        - encryption aes 256
+#        - authentication pre-share
+#        - group 19
+
+#  - name: Create Crypto Profile   
+#    ios_config: 
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "crypto isakmp profile {{ isakmp_profile }}"
+#      lines:
+#        - keyring {{ keyring }}
+#        - vrf INTERNET
+#        - match identity address {{ hub_peer_ip }} 255.255.255.255 INTERNET
+#        - local-address {{ wan.intf }}
+
+#  - name: Create Crypto Transform Set, Set IPSEC Replay Window & DF-Bit 
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - crypto ipsec security-association replay window-size 1024 
+#        - crypto ipsec transform-set {{ tset }} esp-aes 256 esp-sha256-hmac 
+#        # Transform set defaults to tunnel mode      
+#        - crypto ipsec df-bit clear
+
+#  - name: Create Crypto Map 
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "crypto map {{ crypto_map }} 10 ipsec-isakmp"
+#      lines:
+#        - description ***IPSec Tunnel to {{ hub_name }}***
+#        - set peer {{ hub_peer_ip }}
+#        - set transform-set {{ tset }} 
+#        - set isakmp-profile {{ isakmp_profile }}
+#        - match address {{ acl_name }}
+           
+#  - name: Apply Crypto Map to WAN Interface
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface {{ wan.intf }}"
+#      lines:
+#        - crypto map {{ crypto_map }}
+
+#  - name: Create NA & LATAM BGP Baseline & Communities 
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - ip bgp-community new-format
+#        - ip community-list 1 permit 65001:120
+#        - ip community-list 2 permit 65001:110
+#        - ip community-list 3 permit 65001:105
+#    when: region == "NALA"  
+
+#  - name: Create EMEA BGP Baseline & Communities
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - ip bgp-community new-format
+#        - ip community-list 11 permit 65010:120
+#        - ip community-list 12 permit 65010:110
+#        - ip community-list 13 permit 65010:105
+#    when: region == "EMEA"
+
+#  - name: Create ASPAC-Sydney BGP Baseline & Communities
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - ip bgp-community new-format
+#        - ip community-list 21 permit 65020:120
+#        - ip community-list 22 permit 65020:110
+#        - ip community-list 24 permit 65022:120
+#        - ip community-list 25 permit 65022:110
+#    when: region == "APAU"
+
+#  - name: Create ASPAC-Sydney BGP Baseline & Communities
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - ip bgp-community new-format
+#        - ip community-list 24 permit 65022:120
+#        - ip community-list 25 permit 65022:110
+#        - ip community-list 21 permit 65020:120
+#        - ip community-list 22 permit 65020:110
+#      match: exact
+#    when: region == "APSG"
+
+#  - name: Create International Communities
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - ip community-list 50 permit 65001:65001
+#        - ip community-list 51 permit 65010:65010
+#        - ip community-list 52 permit 65020:65020
+#        - ip community-list 54 permit 65200:65200
+
+#  - name: Create Default Route Prefix List
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - ip prefix-list DEFAULTtoEIGRP seq 5 permit 0.0.0.0/0  
+    
+#  - name: Create route-map BGPtoEIGRP 
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "route-map BGPtoEIGRP permit 10"
+#      lines:
+#        - set tag 2{{ site_id }}
+   
+#  - name: Create route-map STATICtoEIGRP
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "route-map STATICtoEIGRP permit 10"
+#      lines:
+#        - match ip address prefix-list DEFAULTtoEIGRP
+
+#  - name: Configure EBGP Outbound Route Map Sequence 10
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorizer: yes
+#      parents:
+#        - ip as-path access-list 99 permit ^$
+#        - route-map {{ ebgp_out_rmap }} permit 10
+#      lines:
+#        - description Advertise {{ region }} Remote
+#        - match as-path 99
+#        - set as-path prepend {{ site_bgp_as }}
+#        - "set community {{ peer_bgp_as }}:{{ site_bgp_as }} {{ site_bgp_as }}:2{{ site_id }} additive"   
+
+#  - name: Configure EBGP Outbound Route Map Sequence 100
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorizer: yes
+#      parents:
+#        - route-map {{ ebgp_out_rmap }} deny 100
+#      lines:
+#        - description Deny All Others
+
+#  - name: Configure EBGP Inbound Route Map Sequence 10
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorizer: yes
+#      parents:
+#        - route-map {{ ebgp_in_rmap }} permit 10
+#      lines:
+#        - description Accept NA Default
+#        - match community 1 2 3 
+#        - set as-path prepend {{ site_bgp_as }}
+#        - set community no-export additive
+#    when: region == "NALA"
+
+#  - name: Configure EBGP Inbound Route Map Sequence 10
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorizer: yes
+#      parents:
+#        - route-map {{ ebgp_in_rmap }} permit 10
+#      lines:
+#        - description Accept EMEA Default
+#        - match community 11 12 13
+#        - set as-path prepend {{ site_bgp_as }}
+#        - set community no-export additive
+#    when: region == "EMEA"
+
+#  - name: Configure EBGP Inbound Route Map Sequence 10
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorizer: yes
+#      parents:
+#        - route-map {{ ebgp_in_rmap }} permit 10
+#      lines:
+#        - description Accept ASPAC Sydney Default
+#        - match community 21 22 24 25
+#        - set as-path prepend {{ site_bgp_as }}
+#        - set community no-export additive
+#    when: region == "APAU"
+
+#  - name: Configure EBGP Inbound Route Map Sequence 10
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorizer: yes
+#      parents:
+#        - route-map {{ ebgp_in_rmap }} permit 10
+#      lines:
+#        - description Accept ASPAC Singapore Default
+#        - match community 24 25 21 22
+#        - set as-path prepend {{ site_bgp_as }}
+#        - set community no-export additive
+#    when: region == "APSG"
+
+#  - name: Configure EBGP Inbound Route Map Sequence 20
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorizer: yes
+#      parents:
+#        - route-map {{ ebgp_in_rmap }} permit 20
+#      lines:
+#        - description Accept Regional Summaries 
+#        - match community 50 51 52 54
+#        - set as-path prepend {{ site_bgp_as }}
+#        - set community no-export additive
+
+#  - name: Configure EBGP Inbound Route Map Sequence 100
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorizer: yes
+#      parents:
+#        - route-map {{ ebgp_in_rmap }} deny 100
+#      lines:
+#        - description Deny All Others
+
+#  - name: Configure Firepower Connection - Single Interface
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface {{ fp_intf1 }}"
+#      lines:
+#        - "description *** ITSM: {{ site_id }} Trunk Link to Firepower {{ ftd_model }} {{ ftd_name }} {{ ftd_trunk_int }} ***"
+#        - no ip address
+#        - media-type sfp
+#        - negotiation auto
+#    when: fp_intf2 == "none"
+
+#  - name: Configure Firepower Subinterface 100 - Single Interface
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface {{ fp_intf1 }}.100"
+#      lines:
+#        - "description *** ITSM: {{ site_id }} Internal VLAN 100 Link to Firepower  {{ ftd_name }} ***"
+#        - encapsulation dot1Q 100
+#        - ip address {{ rtr_int_ip }} 255.255.255.252 
+#        - no cdp enable
+#    when: fp_intf2 == "none"
+
+#  - name: Configure Firepower Subinterface 200 - Single Interface
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface {{ fp_intf1 }}.200"
+#      lines:
+#        - "description *** ITSM: {{ site_id }} Internal VLAN 200 Link to Firepower  {{ ftd_name }} ***"
+#        - ip vrf forwarding INTERNET
+#        - encapsulation dot1Q 200
+#        - ip address {{ rtr_ext_ip }} 255.255.255.252 
+#        - no cdp enable
+#    when: fp_intf2 == "none"
+
+#  - name: Configure Internal Firepower Connection - Dual Interface
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface {{ fp_intf1 }}"
+#      lines:
+#        - "description *** ITSM: {{ site_id }} Internal Link to Firepower {{ ftd_model }} {{ ftd_name }} {{ rtr_intf1 }} ***"
+#        - ip address {{ rtr_int_ip }} 255.255.255.252
+#        - media-type sfp
+#        - negotiation auto
+#        - no cdp enable
+#    when: fp_intf2 != "none"
+
+#  - name: Configure External Firepower Connection - Dual Interface
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface {{ fp_intf2 }}"
+#      lines:
+#        - "description *** ITSM: {{ site_id }} External Link to Firepower {{ ftd_model }} {{ ftd_name }} {{ rtr_intf2 }} ***"
+#        - ip vrf forwarding INTERNET
+#        - ip address {{ rtr_ext_ip }} 255.255.255.252 
+#        - media-type sfp
+#        - negotiation auto
+#        - no cdp enable
+#    when: fp_intf2 != "none"
+
+#  - name: Configure BGP Peer Groups for ISR-44xx
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents:
+#        - router bgp {{ site_bgp_as }}
+#      lines:
+#        - bgp router-id {{ lo1.ip }}
+#        - bgp log-neighbor-changes
+#        - neighbor E-BGP peer-group
+#        - neighbor E-BGP remote-as {{ mpls.as }}
+#        - neighbor E-BGP description E-BGP to MPLS {{ mpls.name }}
+#        - neighbor E-BGP timers 30 90
+#        - neighbor I-BGP peer-group
+#        - neighbor I-BGP remote-as {{ peer_bgp_as }}
+#        - neighbor I-BGP update-source Loopback30
+#        - neighbor I-BGP timers 5 15
+#        - neighbor {{ ibgp_peer_ip }} peer-group I-BGP
+#        - neighbor {{ ebgp_peer_ip }} peer-group E-BGP
+#    when: isr_type == "44xx"
+
+#  - name: Configure BGP Networks for ISR-44xx
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents:
+#        - router bgp {{ site_bgp_as }}
+#        - address-family ipv4
+#      lines:
+#        - network {{ item.network }} mask {{ item.mask }}
+#    with_items: "{{ bgpnet }}"
+#    when: isr_type == "44xx"
+
+#  - name: Configure BGP Neighbors for ISR-44xx
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents:
+#        - router bgp {{ site_bgp_as }}
+#        - address-family ipv4
+#      lines:
+#        - neighbor E-BGP send-community
+#        - neighbor E-BGP soft-reconfiguration inbound
+#        - neighbor E-BGP advertisement-interval 1
+#        - neighbor E-BGP route-map {{ ebgp_in_rmap }} in
+#        - neighbor E-BGP route-map {{ ebgp_out_rmap }} out
+#        - neighbor I-BGP send-community
+#        - neighbor I-BGP next-hop-self
+#        - neighbor I-BGP soft-reconfiguration inbound
+#        - neighbor {{ ibgp_peer_ip }} activate
+#        - neighbor {{ ebgp_peer_ip }} activate
+#        - exit-address-family
+#    when: isr_type == "44xx"
+  
+#  - name: Configure BGP for ISR-39xx
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents:
+#        - router bgp {{ site_bgp_as }}
+#      lines:
+#        - bgp router-id {{ lo1.ip }}
+#        - network {{ item.network }} mask {{ item.mask }}
+#        - neighbor E-BGP peer-group
+#        - neighbor E-BGP remote-as {{ mpls.as }}
+#        - neighbor E-BGP description E-BGP to MPLS {{ mpls.name }}
+#        - neighbor E-BGP advertisement-interval 1
+#        - neighbor E-BGP timers 30 90
+#        - neighbor E-BGP send-community
+#        - neighbor E-BGP soft-reconfiguration inbound
+#        - neighbor E-BGP route-map {{ ebgp_in_rmap }} in
+#        - neighbor E-BGP route-map {{ ebgp_out_rmap }} out
+#        - neighbor I-BGP peer-group
+#        - neighbor I-BGP remote-as {{ peer_bgp_as }}
+#        - neighbor I-BGP update-source Loopback30
+#        - neighbor I-BGP timers 5 15
+#        - neighbor I-BGP send-community
+#        - neighbor I-BGP next-hop-self
+#        - neighbor I-BGP soft-reconfiguration inbound
+#        - neighbor {{ ibgp_peer_ip }} peer-group I-BGP
+#        - neighbor {{ ebgp_peer_ip }} peer-group E-BGP
+#        - no auto-summary
+#    with_items: "{{ bgpnet }}"
+#    when: isr_type == "39xx"       
+
+#  - name: Configure EIGRP Default Passive Interface for ISR-44xx
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: 
+#        - router eigrp JJSI
+#        - address-family ipv4 unicast autonomous-system {{ region_eigrp_as }}
+#      lines:
+#        - af-interface default
+#        - passive-interface
+#        - exit-af-interface
+#      match: exact
+#    when: isr_type == "44xx"
+
+#  - name: Configure EIGRP Links Passive Interface for ISR-44xx
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: 
+#        - router eigrp JJSI
+#        - address-family ipv4 unicast autonomous-system {{ region_eigrp_as }}
+#      lines:
+#        - af-interface {{ item.link }}
+#        - no passive-interface
+#        - exit-af-interface
+#      match: exact
+#    with_items: "{{ eigrp_conn }}"
+#    when: isr_type == "44xx"
+
+#  - name: Configure EIGRP Topology & Network for ISR-44xx
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: 
+#        - router eigrp JJSI
+#        - address-family ipv4 unicast autonomous-system {{ region_eigrp_as }}
+#        - topology base
+#      lines:
+#        - metric maximum-hops 25
+#        - redistribute bgp {{ site_bgp_as }} metric 2000 10 255 1 1500 route-map BGPtoEIGRP
+#        - redistribute static metric 1000000 1 255 1 1500 route-map STATICtoEIGRP 
+#        - exit-af-topology
+#      match: exact
+#      after:
+#        - network {{ icn_core }}    
+#        - network {{ icn_bkup }}
+#        - network {{ lo1.ip }} 0.0.0.0
+#        - network {{ lo30.ip }} 0.0.0.0 
+#        - eigrp router-id {{ lo1.ip }}  
+#       - exit-address-family
+#    when: isr_type == "44xx"
+ 
+#  - name: Configure EIGRP for ISR-39xx
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: 
+#        - router eigrp {{ region_eigrp_as }}
+#      lines:
+#        - redistribute bgp {{ site_bgp_as }} metric 2000 10 255 1 1500 route-map BGPtoEIGRP
+#        - redistribute static metric 1000000 1 255 1 1500 route-map STATICtoEIGRP 
+#        - passive-interface default
+#        - no passive-interface {{ item.link }}
+#        - metric maximum-hops 25
+#        - network {{ icn_core }}    
+#        - network {{ icn_bkup }}
+#        - network 10.0.0.0 0.255.255.255
+#        - no auto-summary
+#        - eigrp router-id {{ lo1.ip }}  
+#    with_items: "{{ eigrp_conn }}"
+#    when: isr_type == "39xx"
+
+  - name: Save configuration
+    ios_command:
+      provider: "{{ provider }}"
+      authorize: yes    
+      commands: 
+        - write memory  

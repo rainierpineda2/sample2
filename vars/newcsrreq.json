@@ -1,0 +1,24 @@
+{
+   "csr1": 
+     {
+        "common_name": "test1.jnjlabs.com",
+        "org": "Johnson & Johnson",
+        "org_unit": "Information Technology",
+        "email": "webadmin@jnjlabs.com",
+        "city": "Raritan",
+        "state": "NJ",
+        "country": "USA",
+        "san": "DNS:www1.jnjlabs.com, DNS:www2.jnjlabs.com"
+   },
+   "csr2":
+     {
+        "common_name": "test2.jnjlabs.com",
+        "org": "Johnson & Johnson",
+        "org_unit": "Healthcare Systems",
+        "email": "webadmin@jnjlabs.com",
+        "city": "Piscataway",
+        "state": "NJ",
+        "country": "USA",
+        "san": ""
+   }     
+}

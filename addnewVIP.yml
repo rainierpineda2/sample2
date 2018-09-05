@@ -1,0 +1,78 @@
+#!/usr/bin/ansible-playbook
+# Test F5 Ansible modules
+# Author: That Damn Contractor
+- name: F5 Setup Using F5-Ansible modules
+  hosts: localhost
+  connection: local
+  gather_facts: no
+ 
+  vars_files:
+    - vars/newvipvars.yml
+
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter password"
+    private: yes
+#  To run using the password file, run this--> ansible-playbook viptest03.yml -e@sekreto.yml -vv
+  tasks:
+  - name: Check if pool already exist
+    bigip_facts:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      include: "pool"
+      filter: "{{ pool_name }}"
+      validate_certs: no
+    register: checkpool
+    delegate_to: localhost
+# The modules below have been tested to work only on BIGIP appliances version 11.6 and above
+  - name: Create pool
+    bigip_pool:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      state: "present"
+      monitor_type: "and_list"
+      monitors: "{{ item }}"
+      name: "{{ pool_name }}"
+      partition: "Common"
+      lb_method: "{{ lb_method }}"
+    delegate_to: localhost
+    with_items: "{{ monitors }}"
+    when: not(checkpool['ansible_facts']['pool'])
+
+  - name: Add pool members 
+    bigip_pool_member:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      state: "present"
+      pool: "{{ pool_name }}"
+      partition: "Common"
+      host: "{{ item.address }}"
+      port: "{{ item.port }}"
+      validate_certs: "no"
+    delegate_to: localhost
+    with_items: "{{ members }}"
+
+  - name: Add virtual server
+    bigip_virtual_server:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}" 
+      password: "{{ setup_password }}"
+      state: present
+      partition: "Common" 
+      name: "{{ item.0.name }}" 
+      destination: "{{ item.0.address }}"
+      port: "{{ item.0.port }}"
+      pool: "{{ pool_name }}"
+      snat: "{{ item.0.snat }}"
+      description: "{{ item.0.description }}"
+      all_profiles:
+        - "{{ item.1 }}"
+      validate_certs: "no"
+    delegate_to: localhost
+    with_nested: 
+      - "{{ vip }}"
+      - "{{ vs_profiles }}"

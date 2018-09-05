@@ -1,0 +1,134 @@
+#!/usr/bin/f5_ansible-playbook
+### Cisco IOS Tier 2 Hub/EDC Deployment
+### Author: That Damn Contractor A. Pineda
+###=======================================
+### Please edit the variable file t2_hub_var.yml for remote site-specific
+### information. All the field must be populated. Take note of conditional variables
+### such as isr_type and fp_intf2. If you are using two connections going to Firepower,
+### replace none with the proper interface
+##
+### The ios_cred file contains the router login credentials
+### The hosts file contains the management IP of the hub/EDC router
+### There is a matching Ansible script for Tier 2 hub side#
+### Please run this code using this command: ansible-playbook -i hosts t2_hub_deploy.yml
+---
+- name: Deploy configuration to Tier-2 Hub/EDC Site
+  hosts: ios
+  connection: local
+  gather_facts: no
+
+  tasks:
+  - name: Obtain login credentials and variables
+    include_vars:
+      dir: 'vars/t2'
+                   
+#  - name: Create Loopback100
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface Loopback100"
+#      lines:
+#        - description ***GRE Tunnel Source IP for eBGP Backup to Remote Sites***
+#        - ip vrf forwarding INTERNET
+#        - ip address {{ lo100.local }} 255.255.255.255  
+
+#  - name: Create GRE Tunnel
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface Tunnel{{ tunnel.remote_id }}"
+#      lines:
+#        - description ***GRE Tunnel to {{ remote_name }}***
+#        - ip address {{ tunnel.ip }} 255.255.255.252
+#        - ip mtu 1400
+#        - ip tcp adjust-mss 1360
+#        - keepalive 10 3
+#        - tunnel source Loopback100
+#        - tunnel destination {{ lo100.peer }}
+#        - tunnel path-mtu-discovery
+
+#  - name: Create ACL
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "ip access-list extended {{ acl_name }}"
+#      lines:
+#        - permit gre host {{ lo100.local }} host {{ lo100.peer }}
+#        - permit ip host {{ lo100.local }} host {{ lo100.peer }}
+#      match: exact
+
+#  - name: Create Crypto Keyring
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "crypto keyring {{ keyring }}-{{ tunnel.remote_id }}"
+#      lines:
+#        - description IPSec Shared Secret Key and Peers
+#        - local-address {{ wan_intf }}
+#        - pre-shared-key address {{ remote_peer_ip }} key {{ sskey }}
+
+#  - name: Create Crypto ISAKMP Policy & Keepalive
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "crypto isakmp policy 100"
+#      lines:
+#        - encryption aes 256
+#        - authentication pre-share
+#        - group 19
+#      after:
+#        - crypto isakmp keepalive 30 5  
+
+#  - name: Create Crypto Profile
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "crypto isakmp profile {{ isakmp_profile }}-{{ tunnel.remote_id }}"
+#      lines:
+#        - keyring {{ keyring }}-{{ tunnel.remote_id }}
+#        - match identity address {{ remote_peer_ip }} 255.255.255.255
+#        - local-address {{ wan_intf }}
+
+#  - name: Create Crypto Transform Set, Set IPSEC Replay Window, Keepalive & DF-Bit
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - crypto ipsec security-association replay window-size 1024
+#        - crypto ipsec transform-set {{ tset }} esp-aes 256 esp-sha256-hmac
+         # Transform set defaults to tunnel mode
+#        - crypto ipsec df-bit clear
+
+#  - name: Create Crypto Map
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "crypto map {{ crypto_map.name }} {{ crypto_map.seq }} ipsec-isakmp"
+#      lines:
+#        - description ***IPSec Tunnel to {{ remote_name }}***
+#        - set peer {{ remote_peer_ip }}
+#        - set transform-set {{ tset }}
+#        - set isakmp-profile {{ isakmp_profile }}-{{ tunnel.remote_id }}
+#        - match address {{ acl_name }}
+
+#  - name: Apply Crypto Map to WAN Interface
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      parents: "interface {{ wan_intf }}"
+#      lines:
+#        - crypto map {{ crypto_map.name }}
+
+#  - name: Configure Static Route for Loopback100
+#    ios_config:
+#      provider: "{{ provider }}"
+#      authorize: yes
+#      lines:
+#        - ip route {{ lo100.peer }} 255.255.255.255 {{ next_hop_isp }}
+
+  - name: Save configuration
+    ios_command:
+      provider: "{{ provider }}"
+      authorize: yes
+      commands:
+        - write memory

@@ -1,0 +1,2 @@
+vrf_name,lo_name,acl_name,acl_src,acl_dst,keyring,wan_peer_ip,psk,isakmp_prof,local_wan_int,isakmp_enc1,group,tset_name,tset1,tset2,tset3
+INTERNET,Loopback10,RTR-to-EDC,10.0.202.201,10.0.202.202,ipsec-keyring,192.168.250.2,cisco123,T2-ISAKMP,GigabitEthernet0/0/2,aes,19,T2-set,esp-aes,256,esp-sha256-hmac

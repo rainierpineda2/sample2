@@ -1,0 +1,110 @@
+{
+  "lists": [    
+    {  
+      "name": "irules__irules",
+      "value": []
+    }
+  ],
+  "tables": [
+    {
+      "name": "basic__snatpool_members"
+    },
+    {
+      "name": "net__snatpool_members"
+    },
+    {
+      "name": "optimizations__hosts"
+    },
+    {
+      "name": "pool__hosts",
+      "columnNames": [
+        "name"
+      ],
+      "rows": [
+        {
+          "row": [
+            "internal.company.bar"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pool__members",
+      "columnNames": [
+        "addr",
+        "port",
+        "connection_limit"
+      ],
+      "rows": [
+          {% for host in item.value.members %}
+          { "row": ["{{ host.address }}","{{ host.port }}","0"] },
+          {% endfor %}
+      ]
+    },
+    {
+      "name": "server_pools__servers"
+    }
+  ],
+  "variables": [
+    {
+      "name": "client__http_compression",
+      "value": "/#create_new#"
+    },
+    {
+      "name": "monitor__monitor",
+      "value": "/#create_new#"
+    },
+    {
+      "name": "monitor__response",
+      "value": ""
+    },
+    {
+      "name": "monitor__uri",
+      "value": "/"
+    },
+    {
+      "name": "net__client_mode",
+      "value": "wan"
+    },
+    {
+      "name": "net__server_mode",
+      "value": "lan"
+    },
+    {
+      "name": "pool__addr",
+      "value": "{{ item.value.vip_ip }}"
+    },
+    {
+      "name": "pool__pool_to_use",
+      "value": "/#create_new#"
+    },
+    {
+      "name": "pool__port",
+      "value": "{{ item.value.vip_port }}"
+    },
+    {
+      "name": "ssl__cert",
+      "value": "/Common/default.crt"  # default SSL certificate on BIG-IP - replace with proper name
+    },
+    {
+      "name": "ssl__client_ssl_profile",
+      "value": "/#create_new#"
+    },
+    {
+      "name": "ssl__key",
+      "value": "/Common/default.key"   # default SSL key on BIG-IP - replace with proper name
+    },
+    { 
+      "name": "ssl__use_chain_cert",
+      "value": "/#do_not_use#"
+    },
+    {
+      "name": "ssl__mode",
+      "value": "client_ssl"
+    },
+    {
+      "name": "ssl_encryption_questions__advanced",
+      "value": "yes"
+    }
+  ]
+}

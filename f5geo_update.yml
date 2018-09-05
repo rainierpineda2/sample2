@@ -1,0 +1,69 @@
+## Update F5 geolocation files
+## The hosts file below should only contain F5s that match the right version for the
+## downloaded geolocation file
+---
+- name: Upload and update geolocation files on F5
+  hosts: tmsh 
+  remote_user: root   
+  gather_facts: no
+# Download the version-specific geolocation update file from downloads.f5.com
+# Place in the Ansible directory specified in local_fp below
+  vars:
+    gfile_v12_1_3: "ip-geolocation-v2-2.0.0-20180716.327.0.zip"
+    gfile_v11_6_1: "ip-geolocation-1.0.1-20171106.286.0.zip"    
+    local_fp: "/Users/rainierpineda/f5_ansible/playbooks/files/"    
+    scpuser: "root"
+    mgmt_ip: "{{ ansible_host }}"    
+
+  vars_prompt:
+    - name: "setup_password"
+      prompt: "Enter admin password"
+      private: yes      
+# To run using the password file, run this--> ansible-playbook -i hosts --ask-vault-pass f5geo_update.yml
+  tasks:
+  - name: Get LTM System Information
+    bigip_facts:
+      server: "{{ mgmt_ip }}"
+      user: "admin"
+      password: "{{ setup_password }}"
+      include: "system_info"
+      validate_certs: no
+    delegate_to: localhost
+
+  - block:
+     - name: Copy geolocation file to F5 appliance
+       copy:
+         src: "{{ local_fp }}{{ gfile_v12_1_3 }}"       
+         dest: "/shared/tmp/{{ gfile_v12_1_3 }}"    
+       register: f_result    
+     - debug:
+         msg: "{{ f_result }}"
+     - name: Unzip geolocation zip file
+       raw: unzip /shared/tmp/{{ gfile_v12_1_3 }} -d /shared/tmp
+       register: z_result    
+     - debug: 
+         msg: "{{ z_result }}"
+     - name: Run F5 geolocation update script
+       raw: for i in /shared/tmp/geo*.rpm; do geoip_update_data -f "$i"; done
+       register: g_result
+     - debug:
+         msg: "{{ g_result }}"       
+    when: system_info.product_information.product_version == "12.1.3.5"          
+
+#  - block:
+#     - name: Copy geolocation file to F5 appliance
+#       local_action: command scp {{ local_fp }}{{ gfile_v11_6_1 }} {{ scpuser }}@{{ mgmt_ip }}:/shared/tmp/{{ gfile_v11_6_1}}
+#       register: f_result
+#     - debug:
+#         msg: "{{ f_result }}"
+#     - name: Unzip geolocation zip file
+#       raw: unzip /shared/tmp/{{ gfile_v11_6_1 }} -d /shared/tmp
+#       register: z_result
+#     - debug:
+#         msg: "{{ z_result }}"
+#     - name: Run F5 geolocation update script
+#       raw: for i in /shared/tmp/geo*.rpm; do geoip_update_data -f "$i"; done
+#       register: g_result
+#     - debug:
+#         msg: "{{ g_result }}"
+#    when: system_info.product_information.product_version == "11.6.1"    

@@ -1,0 +1,46 @@
+---
+- name: Disable priority group activation
+  bigip_command:
+    commands:
+      - modify ltm pool {{ item.pool_name }} min-active-members {{ item.min_act_mem }}
+  delegate_to: localhost
+  with_items: "{{ vips }}"
+  when: pool_stat and item.min_act_mem == 0
+
+- name: Enable priority group activation
+  bigip_command:
+    commands:
+      - modify ltm pool {{ item.pool_name }} min-active-members {{ item.min_act_mem }}
+  delegate_to: localhost
+  with_items: "{{ vips }}"
+  when: pool_stat and item.min_act_mem > 0
+
+- name: Add pool members
+  bigip_pool_member:
+    state: "present"
+    pool: "{{ item.0.pool_name }}"
+    partition: "{{ item.0.partition | default('Common') }}"
+    host: "{{ item.1.address }}"
+    port: "{{ item.1.port }}"
+    priority_group: "{{ item.1.priority | default(0) }}"
+  delegate_to: localhost
+  ignore_errors: True
+  with_subelements:
+    - "{{ vips }}"
+    - members
+  when: pool_stat and item.1.mode == "add"
+
+- name: Delete pool members
+  bigip_pool_member:
+    state: "absent"
+    pool: "{{ item.0.pool_name }}"
+    partition: "{{ item.0.partition | default('Common') }}"
+    host: "{{ item.1.address }}"
+    port: "{{ item.1.port }}"
+    priority_group: "{{ item.1.priority | default(0)}}"
+  delegate_to: localhost
+  ignore_errors: True
+  with_subelements:
+    - "{{ vips }}"
+    - members
+  when: pool_stat and item.1.mode == "delete"

@@ -1,0 +1,222 @@
+vrf definition INTERNET
+   description Internet VRF for IB
+   rd {{ site_id }}
+!   
+   address-family ipv4
+   exit-address-family
+!  
+interface {{ lo1.ifname }}
+   description *** ITSM: {{ site_id }}; PSTN# {{ lo1.ion_no }} Management; ION {{ lo1.ion_ci }} ***  
+   ip address {{ lo1.ip }} 255.255.255.255
+!   
+interface {{ lo30.ifname }}
+   description  *** ITSM: {{ site_id }} iBGP Peering Loopback Interface ***
+   ip address {{ lo30.ip }} 255.255.255.255          
+!   
+policy-map Internet_Shaping_{{ isp.bw }}
+   class class-default
+      shape average {{ isp.bw }}000000
+!
+interface {{ mpls.intf }}
+   description *** {{ mpls.bw }}, {{ mpls.abbr }} CKT ID: {{ mpls.ckt_id }}; LEC CKT ID: {{ mpls.lec_id }} ***
+   ip address {{ mpls.ip }} 255.255.255.252
+   bandwidth {{ mpls.bw }}000 
+   bfd interval 999 min_rx 999 multiplier 3
+   ip flow ingress
+   no cdp enable
+!   
+interface {{ isp.intf }}
+   description *** {{ isp.bw }}, {{ isp.abbr }} CKT ID: {{ isp.ckt_id }}; LEC CKT ID: {{ isp.lec_id }} ***
+   vrf forwarding INTERNET
+   ip address {{ isp.ip }} 255.255.255.252
+   bandwidth {{ isp.bw }}000
+   service-policy output Internet_Shaping_{{ isp.bw }}
+   no cdp enable
+!
+{% for sla in slas -%}
+ip sla {{ sla.number }}
+   icmp-echo {{ sla.ip }} source interface Loopback1
+   tag IPSLA to Track Local Internet Link Status
+   frequency 6
+!   
+ip sla schedule {{ sla.number }} life forever start-time now
+!
+track {{ sla.number }} ip sla {{ sla.number }} reachability
+!
+{% endfor -%}
+track 50 list boolean or
+   {% for sla in slas -%}
+   object {{ sla.number }}
+   {% endfor -%}
+delay down 18 up 30
+!
+ip route 0.0.0.0 0.0.0.0 {{ ftd_int_ip }} 5 name Internet_Breakout track 50
+ip route {{ isp.next_hop }} 255.255.255.255 {{ ftd_int_ip }} name ISP_Link
+ip route vrf INTERNET 0.0.0.0 0.0.0.0 {{ isp.next_hop }}
+ip route vrf INTERNET {{ ftd_pat_ip }} 255.255.255.255 {{ ftd_ext_ip }}
+!
+ip bgp-community new-format
+!
+{% if region == 'NALA' -%}
+ip community-list 1 permit 65001:120
+ip community-list 2 permit 65001:110
+ip community-list 3 permit 65001:105
+{% elif region == 'EMEA' -%}
+ip community-list 11 permit 65010:120
+ip community-list 12 permit 65010:110
+ip community-list 13 permit 65010:105
+{% elif region == 'APAU' -%}
+ip community-list 21 permit 65020:120
+ip community-list 22 permit 65020:110
+ip community-list 24 permit 65022:120
+ip community-list 25 permit 65022:110
+{% elif region == 'APSG' -%}
+ip community-list 24 permit 65022:120
+ip community-list 25 permit 65022:110
+ip community-list 21 permit 65020:120
+ip community-list 22 permit 65020:110
+{% endif -%}
+!
+ip prefix-list DEFAULTtoEIGRP seq 5 permit 0.0.0.0/0 
+!
+route-map BGPtoEIGRP permit 10
+   set tag 1{{ site_id }}
+!
+route-map STATICtoEIGRP permit 10
+   match ip address prefix-list DEFAULTtoEIGRP
+!
+{% if fp_intf2 == 'none' -%}
+interface {{ fp_intf1 }}
+   description *** ITSM: {{ site_id }} Trunk Link to Firepower {{ ftd_model }} {{ ftd_name }} {{ ftd_trunk_int }} ***
+   no ip address
+   media-type sfp
+   negotiation auto
+!
+interface {{ fp_intf1 }}.100
+   description *** ITSM: {{ site_id }} Internal VLAN 100 Link to Firepower {{ ftd_name }} ***
+   encapsulation dot1Q 100
+   ip address {{ rtr_int_ip }} 255.255.255.252
+   no cdp enable
+!
+interface {{ fp_intf1 }}.200
+   description *** ITSM: {{ site_id }} Internal VLAN 200 Link to Firepower {{ ftd_name }} ***
+   encapsulation dot1Q 200
+   vrf forwarding INTERNET
+   ip address {{ rtr_ext_ip }} 255.255.255.252
+   no cdp enable
+!   
+{% else -%}
+interface {{ fp_intf1 }}
+   description *** ITSM: {{ site_id }} Internal Link to Firepower {{ ftd_model }} {{ ftd_name }} {{ ftd_trunk_int }} ***
+   ip address {{ rtr_int_ip }} 255.255.255.252
+   media-type sfp
+   negotiation auto
+   no cdp enable
+!
+interface {{ fp_intf2 }}
+   description *** ITSM: {{ site_id }} External Link to Firepower {{ ftd_model }} {{ ftd_name }} {{ ftd_trunk_int }} ***
+   vrf forwarding INTERNET
+   ip address {{ rtr_ext_ip }} 255.255.255.252
+   media-type sfp
+   no cdp enable
+!
+{% endif -%}
+{% if isr_type == '44xx' -%}
+router bgp {{ site_bgp_as }}
+   bgp router-id {{ lo1.ip }}
+   bgp log-neighbor-changes
+   neighbor E-BGP peer-group
+   neighbor E-BGP remote-as {{ peer_bgp_as }}
+   neighbor E-BGP description E-BGP to MPLS {{ peer_bgp_cn }}
+   neighbor E-BGP timers 30 90
+   neighbor I-BGP peer-group
+   neighbor I-BGP remote-as {{ site_bgp_as }}
+   neighbor I-BGP update-source Loopback30
+   neighbor I-BGP timers 5 15
+   neighbor {{ ibgp_peer_ip }} peer-group I-BGP
+   neighbor {{ ebgp_peer_ip }} peer-group E-BGP
+!             
+   address-family ipv4
+     {% for bgpnet in bgpnets -%}
+     network {{ bgpnet.network }} mask {{ bgpnet.mask }}
+     {% endfor -%}  
+     neighbor E-BGP send-community
+     neighbor E-BGP soft-reconfiguration inbound
+     neighbor E-BGP advertisement-interval 1
+     neighbor E-BGP route-map {{ ebgp_in_rmap }} in
+     neighbor E-BGP route-map {{ ebgp_out_rmap }} out
+     neighbor I-BGP send-community
+     neighbor I-BGP next-hop-self
+     neighbor I-BGP soft-reconfiguration inbound
+     neighbor {{ ibgp_peer_ip }} activate
+     neighbor {{ ebgp_peer_ip }} activate
+   exit-address-family
+!
+router eigrp JJSI
+  !
+  address-family ipv4 unicast autonomous-system {{ region_eigrp_as }} 
+   !   
+   af-interface default 
+      passive-interface
+   exit-af-interface
+   !
+   {% for interface in eigrp_conn -%}
+   af-interface {{ interface.link }}
+      no passive-interface
+   exit-af-interface
+   !   
+   {% endfor -%}
+   topology base
+      metric maximum-hops 25
+      redistribute bgp {{ site_bgp_as }} metric 2000 10 255 1 1500 route-map BGPtoEIGRP
+      redistribute static metric 1000000 1 255 1 1500 route-map STATICtoEIGRP 
+   exit-af-topology
+   !   
+   network {{ icn_core }}
+   network {{ icn_bkup }}
+   network {{ lo1.ip }} 0.0.0.0
+   network  {{ lo30.ip }} 0.0.0.0
+   eigrp router-id {{ lo1.ip }}
+  exit-address-family
+!
+{% else -%}
+router bgp {{ site_bgp_as }}
+   bgp router-id {{ lo1.ip }}
+   {% for bgpnet in bgpnets -%}
+   network {{ bgpnet.network }}  mask {{ bgpnet.mask }}
+   {% endfor -%}
+   neighbor E-BGP peer-group
+   neighbor E-BGP remote-as {{ peer_bgp_as }}
+   neighbor E-BGP advertisement-interval 1
+   neighbor E-BGP timers 30 90 
+   neighbor E-BGP description E-BGP to MPLS {{ peer_bgp_cn }}
+   neighbor E-BGP send-community
+   neighbor E-BGP soft-reconfiguration inbound
+   neighbor E-BGP route-map {{ ebgp_in_rmap }} in
+   neighbor E-BGP route-map {{ ebgp_out_rmap }} out
+   neighbor I-BGP peer-group
+   neighbor I-BGP remote-as {{ site_bgp_as }}
+   neighbor I-BGP update-source Loopback30
+   neighbor I-BGP timers 5 15 
+   neighbor I-BGP next-hop-self
+   neighbor I-BGP send-community
+   neighbor I-BGP soft-reconfiguration inbound
+   neighbor {{ ibgp_peer_ip }} peer-group I-BGP
+   neighbor {{ ebgp_peer_ip }} peer-group E-BGP
+   no auto-summary
+!
+router eigrp {{ region_eigrp_as }}
+   redistribute bgp {{ site_bgp_as }} metric 2000 10 255 1 1500 route-map BGPtoEIGRP
+   redistribute static metric 1000000 1 255 1 1500 route-map STATICtoEIGRP
+   passive-interface default
+   {% for interface in eigrp_conn -%}  
+   no passive-interface {{ interface.link }}
+   {% endfor -%}
+   metric maximum-hops 25
+   network {{ icn_core }}
+   network {{ icn_bkup }}
+   network 10.0.0.0 0.255.255.255
+   no auto-summary
+   eigrp router-id {{ lo1.ip }}
+!   
+{% endif -%}

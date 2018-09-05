@@ -1,0 +1,321 @@
+#!/usr/bin/ansible-playbook
+# Author: apined12@its.jnj.com
+---
+- name: Change Hostname for Device A
+  bigip_hostname: 
+    server: "{{ primary_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    hostname: "{{ primary_hostname }}"
+  delegate_to: localhost  
+  when: mgmt_ip == primary_ip
+    
+- name: Change Hostname for Device B
+  bigip_hostname:
+    server: "{{ standby_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    hostname: "{{ standby_hostname }}"
+  delegate_to: localhost  
+  when: mgmt_ip == standby_ip
+
+#  - block:
+#      - name: Get trunk information
+#        bigip_facts:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          include: "trunk"
+#          filter: "{{ trunk_name }}"
+#          validate_certs: no
+#        delegate_to: localhost
+#      - set_fact:
+#          trunk_fact: "{{ trunk }}"
+#    when: trunk_name is defined
+
+# All F5 VE platforms have an ID of Z100   
+#  - block:
+#      - name: Get LTM Platform ID
+#        bigip_facts:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          include: "system_info"
+#          validate_certs: no
+#        delegate_to: localhost
+#      - set_fact:
+#          platform: "{{ system_info.system_information.platform }}"
+#      - name: Create Trunk (for VE)
+#        bigip_command:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          commands:
+#            - create net trunk {{ trunk_name }}
+#          validate_certs: "no"
+#        delegate_to: localhost
+#      - name: Add Trunk Members (for VE)
+#        bigip_command:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          commands:
+#            - "modify net trunk {{ trunk_name }} interfaces add { {{ item }} }"
+#          validate_certs: "no"
+#        delegate_to: localhost
+#        with_items: "{{ trunk_int }}"
+#    when: >
+#      'trunk_name not in trunk_fact|string and platform == "Z100"' and
+#       not((trunk_name is undefined) or (trunk_name is none) or (trunk_name|trim == ''))
+
+#  - block:
+#      - name: Create LACP Trunk
+#        bigip_command:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          commands:
+#            - create net trunk {{ trunk_name }} lacp enabled lacp-mode active lacp-timeout short
+#          validate_certs: "no"
+#        delegate_to: localhost
+#      - name: Add LACP Trunk Members
+#        bigip_command:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          commands:
+#            - "modify net trunk {{ trunk_name }} interfaces add { {{ item }} }"
+#          validate_certs: "no"
+#        delegate_to: localhost
+#        with_items: "{{ trunk_int }}"
+#    when: >
+#      'trunk_name not in trunk_fact|string and platform != "Z100"' and
+#       not((trunk_name is undefined) or (trunk_name is none) or (trunk_name|trim == ''))
+
+- name: Create VLANs (untagged interface, i.e. one VLAN per interface)
+  bigip_vlan:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: "{{ item.0.name }}"
+    tag: "{{ item.0.vlan_tag }}"
+    untagged_interface: "{{ item.1 }}"
+    validate_certs: "no"
+  delegate_to: localhost
+  with_subelements: 
+    - "{{ vlans }}"
+    - intf
+  when: not item.0.tagged_intf 
+
+- name: Create VLANs (tagged interface, i.e. multiple VLAN per interface)
+  bigip_vlan:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: "{{ item.0.name }}"
+    tag: "{{ item.0.vlan_tag }}"
+    tagged_interface: "{{ item.1 }}"
+    validate_certs: "no"
+  delegate_to: localhost
+  with_subelements:
+    - "{{ vlans }}"
+    - intf
+  when: item.0.tagged_intf
+
+- name: Create HA VLAN 
+  bigip_vlan:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: "{{ item.0.name }}"
+    untagged_interface: "{{ item.1 }}"
+    validate_certs: "no"
+  delegate_to: localhost
+  with_subelements:
+    - "{{ vlan_ha }}"
+    - intf
+
+- name: Create Self-IPs for Device A
+  bigip_selfip:
+    server: "{{ primary_ip }}" 
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: "{{ item.1.name }}"
+    address: "{{ item.1.addr }}"
+    netmask: "{{ item.1.mask }}"
+    vlan: "{{ item.1.vlan }}"
+    allow_service: "default"
+    validate_certs: "no"
+  delegate_to: localhost  
+  with_subelements: 
+    - "{{ device_a }}"
+    - selfip
+  when: mgmt_ip == primary_ip 
+
+- name: Create Self-IPs for Device B
+  bigip_selfip:
+    server: "{{ standby_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: "{{ item.1.name }}"
+    address: "{{ item.1.addr }}"
+    netmask: "{{ item.1.mask }}"
+    vlan: "{{ item.1.vlan }}"
+    allow_service: "default"
+    validate_certs: "no"
+  delegate_to: localhost
+  with_subelements:
+    - "{{ device_b }}"
+    - selfip
+  when: mgmt_ip == standby_ip
+
+- name: Create Self-IP Floating Addresses
+  bigip_selfip:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: "{{ item.name }}"
+    address: "{{ item.addr }}"
+    netmask: "{{ item.mask }}"
+    vlan: "{{ item.vlan }}"
+    traffic_group: "traffic-group-1"
+    validate_certs: "no"
+  delegate_to: localhost
+  with_items: "{{ selfip_float }}"     
+
+- name: Configure DNS
+  bigip_device_dns:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name_servers: "{{ dns_servers }}"
+    validate_certs: "no" 
+  delegate_to: localhost   
+
+- name: Configure NTP
+  bigip_device_ntp:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    ntp_servers: "{{ ntp_servers }}"
+    timezone: "{{ ntp_timezone }}" 
+    validate_certs: "no"
+  delegate_to: localhost
+
+- name: Configure Syslog Servers (uses new module)
+  bigip_remote_syslog:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    remote_host: "{{ item.ip }}"
+    validate_certs: "no"
+  delegate_to: localhost
+  with_items: "{{ syslog }}"    
+
+- name: Configure device connectivity settings for Device A (uses new module)
+  bigip_device_connectivity:
+    server: "{{ primary_ip}}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    config_sync_ip: "{{ item.sync_ip }}"
+    mirror_primary_address: "{{ item.sync_ip }}"
+    unicast_failover:
+      - address: "{{ item.sync_ip }}"
+  delegate_to: localhost
+  with_items: "{{ device_a }}"
+  when: mgmt_ip == primary_ip
+
+- name: Configure device connectivity settings for Device B (uses new module)
+  bigip_device_connectivity:
+    server: "{{ standby_ip}}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    config_sync_ip: "{{ item.sync_ip }}"
+    mirror_primary_address: "{{ item.sync_ip }}"
+    unicast_failover:
+      - address: "{{ item.sync_ip }}"
+  delegate_to: localhost
+  with_items: "{{ device_b }}"
+  when: mgmt_ip == standby_ip
+
+- name: Wait HA IP Info
+  wait_for:
+    timeout: 10
+
+- name: Configure device trust to peer device from primary (uses new module)
+  bigip_device_trust:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    peer_server: "{{ standby_ip }}"
+    peer_hostname: "{{ standby_hostname }}"
+    peer_user: "{{ setup_user }}"
+    peer_password: "{{ setup_password }}"
+  delegate_to: localhost
+  when: mgmt_ip == primary_ip
+
+- name: Wait Device Trust
+  wait_for:
+    timeout: 10
+
+- name: Create a sync-failover device group with auto-sync enabled (uses new module)
+  bigip_device_group:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: SyncFail
+    type: sync-failover
+    auto_sync: yes
+    state: present
+  delegate_to: localhost
+
+- name: Add member devices to device group SyncFail (uses new module)
+  bigip_device_group_member:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: "{{ item }}"
+    device_group: SyncFail
+    state: present
+  delegate_to: localhost  
+  with_items:
+    - "{{ primary_hostname }}"
+    - "{{ standby_hostname }}"
+
+- name: Wait for active device to come up
+  wait_for:
+    timeout: 15
+
+- name: Determine active device
+  bigip_command:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    commands:
+      - show sys failover
+  register: failover    
+  delegate_to: localhost
+  until: "'active' in failover.stdout_lines|string"
+
+- name: Get management IP of active device
+  set_fact:
+    cur_active: "{{ mgmt_ip }}"
+
+- name: Sync configuration from device to group SyncFail (uses new module)
+  bigip_configsync_actions:
+    server: "{{ cur_active }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    device_group: SyncFail
+    sync_device_to_group: yes
+    validate_certs: no
+  delegate_to: localhost
+
+- name: Test failover from active unit to standby unit  
+  bigip_command:
+    server: "{{ cur_active }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    commands:
+      - run sys failover standby
+  delegate_to: localhost    

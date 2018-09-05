@@ -1,0 +1,201 @@
+#!/usr/bin/ansible-playbook
+# Author: apined12@its.jnj.com
+---
+- name: Check if device is running version 12.x
+  bigip_facts:
+    server: "{{ mgmt_ip }}" 
+    user: "admin"
+    password: "{{ setup_password }}"
+    include: "system_info"
+    validate_certs: no
+  delegate_to: localhost  
+- set_fact: chkver={{ system_info.product_information.product_version }}  
+- fail: msg="Device is not running version 12.x software...aborting auto-config"
+  when: not chkver|search("12.1")
+
+#  - name: License Device
+#    bigip_license:
+#      server: "{{ mgmt_ip }}"
+#      user: "{{ setup_user }}"
+#      password: "{{ setup_password }}"
+#      license_content: "{{ item.license }}"
+#      dossier_content: "{{ item.dossier }}"
+#    delegate_to: localhost
+#    with_items: "{{ device }}"
+#    when: mgmt_ip == item.mgmt_addr
+
+- name: Change Hostname for Device
+  bigip_hostname: 
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    hostname: "{{ item.hostname }}"
+  delegate_to: localhost  
+  with_items: "{{ device }}"
+  when: mgmt_ip == item.mgmt_addr
+
+#  - block:
+#      - name: Get trunk information
+#        bigip_facts:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          include: "trunk"
+#          filter: "{{ trunk_name }}"
+#          validate_certs: no
+#        delegate_to: localhost
+#      - set_fact:
+#          trunk_fact: "{{ trunk }}"
+#    when: trunk_name is defined
+
+# All F5 VE platforms have an ID of Z100   
+#  - block:
+#      - name: Get LTM Platform ID
+#        bigip_facts:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          include: "system_info"
+#          validate_certs: no
+#        delegate_to: localhost
+#      - set_fact:
+#          platform: "{{ system_info.system_information.platform }}"
+#      - name: Create Trunk (for VE)
+#        bigip_command:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          commands:
+#            - create net trunk {{ trunk_name }}
+#          validate_certs: "no"
+#        delegate_to: localhost
+#      - name: Add Trunk Members (for VE)
+#        bigip_command:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          commands:
+#            - "modify net trunk {{ trunk_name }} interfaces add { {{ item }} }"
+#          validate_certs: "no"
+#        delegate_to: localhost
+#        with_items: "{{ trunk_int }}"
+#    when: >
+#      'trunk_name not in trunk_fact|string and platform == "Z100"' and
+#       not((trunk_name is undefined) or (trunk_name is none) or (trunk_name|trim == ''))
+
+#  - block:
+#      - name: Create LACP Trunk
+#        bigip_command:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          commands:
+#            - create net trunk {{ trunk_name }} lacp enabled lacp-mode active lacp-timeout short
+#          validate_certs: "no"
+#        delegate_to: localhost
+#      - name: Add LACP Trunk Members
+#        bigip_command:
+#          server: "{{ mgmt_ip }}"
+#          user: "{{ setup_user }}"
+#          password: "{{ setup_password }}"
+#          commands:
+#            - "modify net trunk {{ trunk_name }} interfaces add { {{ item }} }"
+#          validate_certs: "no"
+#        delegate_to: localhost
+#        with_items: "{{ trunk_int }}"
+#    when: >
+#      'trunk_name not in trunk_fact|string and platform != "Z100"' and
+#       not((trunk_name is undefined) or (trunk_name is none) or (trunk_name|trim == ''))
+
+- name: Create VLANs (untagged interface, i.e. one VLAN per interface)
+  bigip_vlan:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: "{{ item.0.name }}"
+    tag: "{{ item.0.vlan_tag }}"
+    untagged_interface: "{{ item.1 }}"
+    validate_certs: "no"
+  delegate_to: localhost
+  with_subelements: 
+    - "{{ vlans }}"
+    - intf
+  when: not item.0.tagged_intf 
+
+- name: Create VLANs (tagged interface, i.e. multiple VLAN per interface)
+  bigip_vlan:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: "{{ item.0.name }}"
+    tag: "{{ item.0.vlan_tag }}"
+    tagged_interface: "{{ item.1 }}"
+    validate_certs: "no"
+  delegate_to: localhost
+  with_subelements:
+    - "{{ vlans }}"
+    - intf
+  when: item.0.tagged_intf
+
+- name: Create Self-IPs for Device
+  bigip_selfip:
+    server: "{{ mgmt_ip }}" 
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name: "{{ item.1.name }}"
+    address: "{{ item.1.addr }}"
+    netmask: "{{ item.1.mask }}"
+    vlan: "{{ item.1.vlan }}"
+    allow_service: "default"
+    validate_certs: "no"
+  delegate_to: localhost  
+  with_subelements: 
+    - "{{ device }}"
+    - selfip
+  when: mgmt_ip == item.0.mgmt_addr
+
+- name: Configure DNS
+  bigip_device_dns:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    name_servers: "{{ dns_servers }}"
+    validate_certs: "no" 
+  delegate_to: localhost   
+
+- name: Configure NTP
+  bigip_device_ntp:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    ntp_servers: "{{ ntp_servers }}"
+    timezone: "{{ ntp_timezone }}" 
+    validate_certs: "no"
+  delegate_to: localhost
+
+- name: Configure Syslog Servers
+  bigip_remote_syslog:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    remote_host: "{{ item.ip }}"
+    validate_certs: "no"
+  delegate_to: localhost
+  with_items: "{{ syslog }}"
+
+- name: Configure Remote LDAP Authentication  
+  bigip_command:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    commands:
+      - create auth ldap system-auth servers add { 10.35.224.92 }
+      - modify auth ldap system-auth bind-dn CN=SA-ITS-Networkinfo,OU=NSACCOUNTS,OU=VAULT,O=JNJ
+      - modify auth ldap system-auth bind-pw {{ bindpw }}
+      - modify auth ldap system-auth login-attribute jnjMSUserName
+      - modify auth ldap system-auth search-base-dn ou=vault,o=jnj
+      - modify auth source type ldap
+      - modify auth remote-user default-role guest remote-console-access tmsh
+      - create auth user admin_apined12 partition-access add { all-partitions { role admin } } shell bash
+    validate_certs: "no"
+  delegate_to: localhost  

@@ -1,0 +1,49 @@
+#!/usr/bin/ansible-playbook
+# Author: apined12@its.jnj.com
+---
+- name: F5 Test License Module
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    mgmt_ip: 10.0.160.135
+    setup_user: admin
+    license: "{{ lookup('file', 'files/lb009_license.lic') }}"
+    dossier: "{{ lookup('file', 'files/lb009_dossier.txt') }}"
+    key: WUJTG-XOUND-MDTMC-UUOSQ-OJDFYRB 
+
+  vars_prompt:
+    - name: "setup_password"
+      prompt: "Enter admin password"
+      private: yes
+
+  tasks:
+#  - name: License Device
+#    icontrol_install_config:
+#      uri: "/mgmt/tm/sys/license"
+#      body: '{"command":"install", "registrationKey":"{{ key }}"}'
+#      host: "{{ mgmt_ip }}"
+#      username: "{{ setup_user }}"
+#      password: "{{ setup_password }}"
+#    delegate_to: localhost
+
+  - name: License Device
+    uri:
+      url: "https://{{ mgmt_ip }}/mgmt/tm/sys/license"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      force_basic_auth: yes
+      method: POST
+      body: '{"command":"install", "registrationKey":"{{ key }}"}'
+      validate_certs: no
+    delegate_to: localhost
+
+  - name: Save configuration  
+    bigip_config:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      save: yes
+      validate_certs: no
+    delegate_to: localhost  

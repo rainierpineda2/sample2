@@ -1,0 +1,62 @@
+#!/usr/bin/ansible-playbook
+## F5 Command Run Test
+## Author: That Damn Contractor A. Pineda
+- name: F5 Save UCS Using icontrol_install_config
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    mgmt_ip: "10.0.209.86"
+    setup_user: "admin"
+    now: "{{ lookup('pipe','date +%Y%m%d')}}"
+
+#  To run and be prompted for password, uncomment next four lines below
+  vars_prompt:
+  - name: "setup_password"
+    prompt: "Enter password"
+    private: yes
+    # To run using the password file, run this--> ansible-playbook <yaml-script-name>.yml -e@sekreto.yml -vv
+  tasks:
+  - name: Get LTM System Information
+    bigip_facts:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      include: "system_info"
+      validate_certs: no
+    register: bigip_facts
+    delegate_to: localhost
+
+  - name: debug
+    debug: msg="{{ bigip_facts }}"
+  
+  - set_fact:
+      f5_name: "{{ system_info.system_information.host_name }}"
+
+#  - name: Save configuration
+#    bigip_config:
+#      server: "{{ mgmt_ip }}"
+#      user: "{{ setup_user }}"
+#      password: "{{ setup_password }}"
+#      save: yes
+#      validate_certs: no  
+
+#  - name: Save UCS backup for F5
+#    icontrol_install_config:
+#      uri: "/mgmt/tm/sys/ucs"
+#      body: '{"command":"save","name":"{{ f5_name }}-{{ now }}"}'
+#      method: "POST"                   
+#      host: "{{ mgmt_ip }}"
+#      username: "{{ setup_user }}"
+#      password: "{{ setup_password }}"
+
+  - name: Save UCS backup for F5
+    bigip_command:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      commands:
+        - save sys ucs {{ f5_name }}-{{now}}
+      validate_certs: no
+    delegate_to: localhost  

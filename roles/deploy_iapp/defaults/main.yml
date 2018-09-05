@@ -1,0 +1,24 @@
+mgmt_ip: "{{ ansible_host }}"
+setup_user: "admin"
+directory_path: roles/deploy_iapp/templates
+f5_iapp_dict:
+#  f5.http:
+#    vip_name: VS_192.168.204.204-80
+#    vip_ip: 192.168.204.204
+#    vip_port: 80
+#    state: present
+#    members:
+#      - address: 172.16.100.3
+#        port: 80
+#      - address: 172.16.100.4
+#        port: 80
+  f5.https: 
+    vip_name: VS_192.168.204.204-443
+    vip_ip: 192.168.204.204
+    vip_port: 443
+    state: present
+    members:
+      - address: 172.16.100.3
+        port: 80
+      - address: 172.16.100.4
+        port: 80     

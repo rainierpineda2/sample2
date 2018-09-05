@@ -1,0 +1,26 @@
+#!/usr/bin/f5_ansible-playbook
+---
+- name: NXOS Test
+  hosts: nxos 
+  connection: local
+  gather_facts: no
+
+  tasks:   
+  - name: Obtain login credentials
+    include_vars:
+      dir: 'vars/nexus'
+                       
+  - name: Define provider
+    set_fact:
+      provider:
+        host: "{{ inventory_hostname }}"
+        username: "{{ creds['username'] }}" 
+        password: "{{ creds['password'] }}"
+                                                                           
+  - name: Gather NXOS facts
+    nxos_facts:
+      gather_subset: all
+      provider: "{{ provider }}"
+    register: nxosfacts
+
+  - debug: var=nxosfacts

@@ -1,0 +1,39 @@
+#!/usr/bin/f5_ansible-playbook
+### Cisco IOS ntc_get_facts
+### Author: That Damn Contractor A. Pineda
+---
+- name: ntc module test
+  hosts: ios 
+  connection: local
+  gather_facts: no
+
+  tasks:   
+  - name: Obtain login credentials
+    include_vars:
+      dir: 'vars/t2'
+                       
+  - name: Define provider
+    set_fact:
+      provider:
+        host: "{{ inventory_hostname }}"
+        username: "{{ creds['username'] }}" 
+        password: "{{ creds['password'] }}"
+        secret: "{{ creds['auth_pass'] }}"
+        connection: ssh
+                                                                           
+  - name: Gather Cisco router facts
+    ntc_get_facts:
+      provider: "{{ provider }}"
+      platform: cisco_ios_ssh
+    register: showfacts
+
+  - debug: var=showfacts   
+
+#  - name: Check if device is a 4500 switch         
+#    ios_facts:
+#      gather_subset: "hardware"
+#      provider: "{{ provider }}"
+#    register: iosfacts
+#    when: "'C4500' in version.stdout_lines|string"
+#
+#  - debug: var=iosfacts

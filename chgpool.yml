@@ -1,0 +1,74 @@
+#!/usr/bin/ansible-playbook
+# Description: Modify pool members
+# Author: apined12@its.jnj.com
+---
+- name: Modify pool members (add/delete)
+  hosts: tmsh
+  connection: local
+  gather_facts: no
+ 
+  vars_files:
+    - vars/poolchg.yml
+
+  environment:
+    F5_SERVER: "{{ ansible_host }}"
+    F5_USER: "admin"
+    F5_PASSWORD: "{{ setup_password }}"
+    F5_VALIDATE_CERTS: "false"
+
+# To run using the password file, run this--> ansible-playbook  -i hosts --ask-vault-pass addnewVIP_v2.yml
+  tasks:
+  - name: Gather pool information from LTM
+    bigip_facts:
+      include: "pool"
+      filter: "{{ item.pool_name }}"
+    register: checkpool  
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+  - name: Check if pool exist 
+    set_fact: 
+      pool_stat: "{{ checkpool.results.0.ansible_facts.pool }}"
+
+  - name: Disable priority group activation
+    bigip_command:
+      commands:
+        - modify ltm pool {{ item.pool_name }} min-active-members {{ item.min_act_mem }}
+    delegate_to: localhost 
+    with_items: "{{ vips }}"
+    when: item.min_act_mem = 0
+
+  - name: Set priority group activation
+    bigip_command:
+      commands: 
+        - modify ltm pool {{ item.pool_name }} min-active-members {{ item.min_act_mem }}
+    delegate_to: localhost
+    with_items: "{{ vips }}"
+    when: item.min_act_mem > 0
+
+  - name: Add pool members 
+    bigip_pool_member:
+      state: "present"
+      pool: "{{ item.0.pool_name }}"
+      partition: "{{ item.0.partition | default('Common') }}"
+      host: "{{ item.1.address }}"
+      port: "{{ item.1.port }}"
+      priority_group: "{{ item.1.priority | default(0) }}"
+    delegate_to: localhost
+    with_subelements:
+      - "{{ vips }}"
+      - members 
+    when: pool_stat and item.1.mode == "add"
+
+  - name: Delete pool members
+    bigip_pool_member:
+      state: "absent"
+      pool: "{{ item.0.pool_name }}"
+      partition: "{{ item.0.partition | default('Common') }}"
+      host: "{{ item.1.address }}"
+      port: "{{ item.1.port }}"
+      priority_group: "{{ item.1.priority | default(0)}}"
+    delegate_to: localhost
+    with_subelements:
+      - "{{ vips }}"
+      - members
+    when: pool_stat and item.1.mode == "remove"    

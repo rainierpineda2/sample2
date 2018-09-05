@@ -1,0 +1,30 @@
+---
+- name: Gather LTM System Information
+  bigip_facts:
+    server: "{{ mgmt_ip }}"
+    user: "{{ setup_user }}"
+    password: "{{ setup_password }}"
+    include: "system_info"
+    validate_certs: no
+  delegate_to: localhost
+
+- name: Save LTM hostname as fact
+  set_fact:
+    f5_name: "{{ system_info.system_information.host_name }}"
+- name: Set qkview filename
+  set_fact:
+    qv_name: "{{ f5_name }}-{{ now }}.qkview"
+# The qkview will be created by default on /shared/tmp directory of the F5 device
+- name: Generate qkview
+  raw: qkview -f {{ qv_name }}
+
+- name: Download qkview file...enter F5 root password below
+  local_action: command scp root@{{ mgmt_ip }}:/shared/tmp/{{ qv_name }} qkviews/.  
+#- name: Generate qkview (only runs on v12; issues with downloading file)
+#  bigip_qkview:
+#    server: "{{ mgmt_ip }}"
+#    user: "{{ setup_user }}"
+#    password: "{{ setup_password }}"
+#    filename: "{{ qv_name }}"
+#    dest: "qkviews/{{ qv_name }}"
+#  delegate_to: localhost  

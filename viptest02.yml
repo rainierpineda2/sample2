@@ -1,0 +1,78 @@
+#!/usr/bin/ansible-playbook
+---
+# Name: Combo #1 New VS, new pool with new members on the side
+# By That Damn Contractor: A. Pineda
+# Uses icontrol_install_config.py program of Mark Wall from WWT.
+# This is installed on ./library directory alongside your playbook 
+- name: F5 New VIP & Pool Using icontrol_install_config 
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    mgmt_ip: "10.0.209.86"
+    setup_user: "admin"
+
+  vars_prompt:
+    - name: "setup_password"
+      prompt: "Enter password"
+      private: yes
+
+  tasks:
+  - name: Check if pool already exist
+    bigip_facts:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      include: "pool"
+      filter: "test-pool"
+      validate_certs: no
+    register: checkpool 
+    delegate_to: localhost    
+
+  - name: Create LTM Pool
+    icontrol_install_config:
+      uri: "/mgmt/tm/ltm/pool"
+      body: '{"name":"test-pool","monitor":"https"}' 
+      host: "{{ mgmt_ip }}"
+      username: "{{setup_user}}"
+      password: "{{setup_password}}"
+    when: not(checkpool['ansible_facts']['pool'])  
+
+  - name: Check if virtual server already exist
+    bigip_facts:
+      server: "{{ mgmt_ip }}"
+      user: "{{ setup_user }}"
+      password: "{{ setup_password }}"
+      include: "virtual_server"
+      filter: "VS_test_virtual_443"
+      validate_certs: no
+    register: checkvs
+    delegate_to: localhost
+
+  - name: Create LTM Virtual Server
+    icontrol_install_config:
+      uri: "/mgmt/tm/ltm/virtual"
+      body: '{"name":"VS_test_virtual_443",
+              "destination":"192.168.204.185:443",
+              "pool":"test-pool","sourceAddressTranslation":{"type": "automap"},
+              "profiles":[{"kind":"tm:ltm:virtual:profile","name":"tcp"},
+                          {"kind":"tm:ltm:virtual:profile","name":"http"},
+                          {"kind":"tm:ltm:virtual:profile","name":"clientssl-insecure-compatible",
+                                  "context":"clientside"}]}' 
+      host: "{{ mgmt_ip }}"
+      username: "{{setup_user}}"
+      password: "{{setup_password}}"
+    when: not(checkvs['ansible_facts']['virtual_server'])
+
+  - name: Add new members to pool
+    icontrol_install_config:
+      uri: "/mgmt/tm/ltm/pool/test-pool/members"
+      body: '{"name":"{{ item.address }}:{{ item.port }}","partition":"Common"}'
+      method: "_post_"
+      host: "{{ mgmt_ip }}"
+      username: "{{setup_user}}"
+      password: "{{setup_password}}"
+    with_items:
+      - { address: '172.16.100.1', port: '443' }
+      - { address: '172.16.100.2', port: '443' }

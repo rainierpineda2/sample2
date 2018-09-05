@@ -1,0 +1,22 @@
+---
+remote_name: T2-RTR2
+remote_peer_ip: 172.16.100.1
+next_hop_isp: 192.168.250.1
+acl_name: EDC-to-RTR
+#Use site ICN IP address for tunnel IP below   
+tunnel:
+  remote_id: 1999
+  ip: 192.168.100.2
+#Use regional allocation from 192.168.192.0/19     
+#for addresses below
+lo100:
+  local: 10.0.202.201
+  peer: 10.0.202.202
+wan_intf: TenGigabitEthernet1/5
+sskey: cisco123
+keyring: TIER2-KEYRING
+isakmp_profile: TIER2-ISAKMP
+tset: TIER2-TSET
+crypto_map:
+  name: B2A_VPN
+  seq: 10
